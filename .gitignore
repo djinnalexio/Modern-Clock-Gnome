@@ -1,4 +1,5 @@
 build/
+*.compiled
 *.swp
 *.swo
 *~
@@ -6,3 +7,4 @@ build/
 .vscode/
 dist/
 venv/
+node_modules/

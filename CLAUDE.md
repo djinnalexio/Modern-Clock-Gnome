@@ -53,9 +53,9 @@ All extension logic lives in `src/`:
 Edit at the top of `extension.js` to change:
 
 ```javascript
-const POSITION  = 'center';   // center | top-right | top-left | bottom-right | bottom-left
-const MARGIN_X  = 60;
-const MARGIN_Y  = 80;
+const POSITION = 'center'; // center | top-right | top-left | bottom-right | bottom-left
+const MARGIN_X = 60;
+const MARGIN_Y = 80;
 const TIME_CHAR = '-';
 ```
 
