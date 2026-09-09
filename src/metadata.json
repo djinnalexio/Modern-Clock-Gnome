@@ -7,9 +7,9 @@
         "47",
         "48",
         "49",
-        "50"
+        "50",
+        "51"
     ],
-    "version": 2,
     "url": "https://github.com/Tony-Rain/Modern-Clock-Gnome",
     "settings-schema": "org.gnome.shell.extensions.modernclock"
 }
