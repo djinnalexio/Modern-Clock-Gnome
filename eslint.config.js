@@ -83,6 +83,7 @@ export default [
             'no-new-wrappers': 'error',
             'no-proto': 'error',
             'no-shadow': 'warn',
+            'prefer-const': 'warn',
             'no-unused-vars': [
                 'error',
                 {

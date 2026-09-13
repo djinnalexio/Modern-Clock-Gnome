@@ -1,483 +1,416 @@
-/*
- * Modern Clock for GNOME Shell
- * Порт KDE Modern Clock by Prayag2
- * Совместимо с GNOME 45/46/47/48/49/50+
- *
- * Используем St.Label + inline CSS стили вместо Clutter.Color
- * (Clutter.Color удалён в GNOME 50)
- */
+// SPDX-FileCopyrightText: 2026 Modern Clock for GNOME Contributors
+// SPDX-License-Identifier: GPL-3.0-only
 
-import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import St from 'gi://St';
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GnomeDesktop from 'gi://GnomeDesktop';
 import Pango from 'gi://Pango';
 import PangoCairo from 'gi://PangoCairo';
+import St from 'gi://St';
 
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Config from 'resource:///org/gnome/shell/misc/config.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-// ── Настройки ────────────────────────────────────────────────────────────
-const POSITION  = 'center';
-const MARGIN_X  = 60;
-const MARGIN_Y  = 80;
-const TIME_CHAR = '-';
-
-const DAYS   = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
-const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-
-// ── Базовые размеры (для 1080p) ──────────────────────────────────────────
-const BASE_HEIGHT   = 1080;
-const BASE_DAY_SIZE = 86;
-const BASE_DAY_LS   = 20;
+//#region Constants
+// ── Базовые размеры (для 1080p) ──────────────────────────────────────────────
+const BASE_HEIGHT = 1080;
+const BASE_WEEKDAY_SIZE = 86;
+const BASE_WEEKDAY_LS = 20;
 const BASE_SUB_SIZE = 23;
-const BASE_SUB_LS   = 4;
-
-function buildStyles(monitorHeight) {
-    // Масштаб относительно 1080p
-    const scale = monitorHeight / BASE_HEIGHT;
-
-    const daySize = Math.round(BASE_DAY_SIZE * scale);
-    const dayLs   = Math.round(BASE_DAY_LS * scale);
-    const subSize = Math.round(BASE_SUB_SIZE * scale);
-    const subLs   = Math.round(BASE_SUB_LS * scale);
-    const padTop1 = Math.round(8 * scale);
-    const padTop2 = Math.round(4 * scale);
-
-    return {
-        day:  `font-family: Anurati, sans-serif; font-size: ${daySize}px; color: #ffffff; letter-spacing: ${dayLs}px; text-align: center;`,
-        date: `font-family: Poppins, sans-serif; font-size: ${subSize}px; color: #ffffff; letter-spacing: ${subLs}px; text-align: center; padding-top: ${padTop1}px;`,
-        time: `font-family: Poppins, sans-serif; font-size: ${subSize}px; color: #ffffff; letter-spacing: ${subLs}px; text-align: center; padding-top: ${padTop2}px;`,
-    };
-}
-
+const BASE_SUB_LS = 4;
+const PAD_TOP_DATE = 8;
+const PAD_TOP_TIME = 4;
+// ── English weekdays and months ──────────────────────────────────────────────
+const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const MONTHS = [
+    'JANUARY',
+    'FEBRUARY',
+    'MARCH',
+    'APRIL',
+    'MAY',
+    'JUNE',
+    'JULY',
+    'AUGUST',
+    'SEPTEMBER',
+    'OCTOBER',
+    'NOVEMBER',
+    'DECEMBER',
+];
+const MONTHS_SHORT = MONTHS.map(m => m.slice(0, 3));
 
 export default class ModernClockExtension extends Extension {
-
+    //#region enable
     enable() {
-        // ── Load settings
-        this._settings = this.getSettings();
-        this._settingsChangedId = this._settings.connect('changed', (s, key) => {
-            this._updateClock();
-            if (key === 'position') this._reposition();
-        });
+        // ── Version check ────────────────────────────────────────────────────
+        this._shellVersion = parseFloat(Config.PACKAGE_VERSION);
 
-        // ── Load settings
-        this._settings = this.getSettings();
-        this._settingsChangedId = this._settings.connect('changed', (s, key) => {
-            this._updateClock();
-            if (key === 'position') this._reposition();
-        });
+        // ── Custom extension logger ──────────────────────────────────────────
+        this._logger = this._shellVersion >= 48 ? this.getLogger() : console;
 
-        // ── Автоустановка шрифтов ────────────────────────────────────────
+        // ── Connect to settings ──────────────────────────────────────────────
+        this._settings = this.getSettings();
+        this._settingsChangedId = this._settings.connect('changed', () => this._updateAllClocks());
+
+        // ── Автоустановка шрифтов ────────────────────────────────────────────
         this._installFonts();
 
-        // ── Определяем масштаб по монитору ──────────────────────────────
-        const monitor = Main.layoutManager.primaryMonitor;
-        const monH = monitor ? monitor.height : 1080;
-        const styles = buildStyles(monH);
+        // ── Build clocks when the layout is ready ────────────────────────────
+        this._clockWidgets = [];
+        this._ready = false;
 
-        // ── St.Label с динамическими стилями ──────────────────────────────
-        this._dayLabel = new St.Label({
-            style: styles.day,
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-        });
-
-        this._dateLabel = new St.Label({
-            style: styles.date,
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-        });
-
-        this._timeLabel = new St.Label({
-            style: styles.time,
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-        });
-
-        // ── Отключить обрезание текста "..." ──────────────────────────────
-        for (const label of [this._dayLabel, this._dateLabel, this._timeLabel]) {
-            if (label.clutter_text)
-                label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        if (Main.layoutManager._startingUp) {
+            this._startupCompleteId = Main.layoutManager.connect('startup-complete', () => {
+                this._ready = true;
+                this._buildAllClocks();
+                Main.layoutManager.disconnect(this._startupCompleteId);
+                this._startupCompleteId = null;
+            });
+        } else {
+            this._ready = true;
+            this._buildAllClocks();
         }
 
-        // ── Контейнер ─────────────────────────────────────────────────────
-        this._container = new St.BoxLayout({
-            name: 'ModernClockWidget',
-            vertical: true,
-            reactive: false,
-            can_focus: false,
-            track_hover: false,
-        });
-
-        this._container.add_child(this._dayLabel);
-        this._container.add_child(this._dateLabel);
-        this._container.add_child(this._timeLabel);
-
-        // Текст ДО позиционирования
-        this._updateClock();
-
-        // Скрываем до позиционирования — без мерцания в углу
-        this._container.opacity = 0;
-
-        // Добавляем в _backgroundGroup — под окнами, на рабочем столе
-        Main.layoutManager._backgroundGroup.add_child(this._container);
-
-        // Авто-репозиция при изменении высоты (поздняя дорисовка шрифтов
-        // меняет аллокацию — без этого виджет «застревает» ниже центра)
-        this._heightNotifyId = this._container.connect(
-            'notify::height', () => this._reposition()
-        );
-
-        // Позиционирование с микрозадержкой
-        this._initTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-            this._reposition();
-            this._container.opacity = 255;
-            return GLib.SOURCE_REMOVE;
-        });
-
-        // Correct position after fonts are fully rendered
-        this._correctTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-            this._reposition();
-            return GLib.SOURCE_REMOVE;
-        });
-
-        this._monitorsChangedId = Main.layoutManager.connect(
-            'monitors-changed', () => { this._rescaleAndReposition(); this._setupExtraMonitors(); }
-        );
-
-        // Multi-monitor
-        this._extraWidgets = [];
-        this._extraWidgets = [];
-        this._setupExtraMonitors();
-
-        this._timeoutId = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT, 1, () => {
-                this._updateClock();
-                return GLib.SOURCE_CONTINUE;
+        // ── Connect to monitor changes ───────────────────────────────────────
+        this._lastMonitorSnapshot = null;
+        this._monitorsChangedId = Main.layoutManager.connect('monitors-changed', () => {
+            const snapshot = Main.layoutManager.monitors
+                .map(m => `${m.index}:${m.x},${m.y},${m.width}x${m.height}`)
+                .join('|');
+            if (this._lastMonitorSnapshot !== snapshot) {
+                this._lastMonitorSnapshot = snapshot;
+                this._buildAllClocks();
             }
-        );
+        });
+
+        // ── Connect to GNOME Clock ───────────────────────────────────────────
+        this._wallClock = new GnomeDesktop.WallClock();
+        this._lastMinute = null;
+        this._clockChangedId = this._wallClock.connect('notify::clock', () => {
+            const now = GLib.DateTime.new_now_local();
+            const minute = now.get_hour() * 60 + now.get_minute();
+            if (this._lastMinute !== minute) {
+                this._lastMinute = minute;
+                this._updateAllClocks();
+            }
+        });
     }
 
+    //#region disable
     disable() {
-        if (this._timeoutId) {
-            GLib.source_remove(this._timeoutId);
-            this._timeoutId = null;
+        // Signals
+        if (this._settingsChangedId) {
+            this._settings.disconnect(this._settingsChangedId);
+            this._settingsChangedId = null;
+        }
+        if (this._startupCompleteId) {
+            Main.layoutManager.disconnect(this._startupCompleteId);
+            this._startupCompleteId = null;
         }
         if (this._monitorsChangedId) {
             Main.layoutManager.disconnect(this._monitorsChangedId);
             this._monitorsChangedId = null;
         }
-        if (this._container) {
-            if (this._heightNotifyId) {
-                this._container.disconnect(this._heightNotifyId);
-                this._heightNotifyId = null;
-            }
-            Main.layoutManager._backgroundGroup.remove_child(this._container);
-            this._container.destroy();
-            this._container = null;
+        if (this._clockChangedId) {
+            this._wallClock.disconnect(this._clockChangedId);
+            this._clockChangedId = null;
         }
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
-        }
+
+        // Objects
+        this._logger = null;
         this._settings = null;
-
-        if (this._extraWidgets) {
-            for (const w of this._extraWidgets) {
-                try { if (w.container.get_parent()) w.container.get_parent().remove_child(w.container); } catch(e) {}
-                w.container.destroy();
-            }
-            this._extraWidgets = [];
-        }
-
-        if (this._initTimeoutId) {
-            GLib.source_remove(this._initTimeoutId);
-            this._initTimeoutId = null;
-        }
-        if (this._correctTimeoutId) {
-            GLib.source_remove(this._correctTimeoutId);
-            this._correctTimeoutId = null;
-        }
-        if (this._fadeInTimeoutId) {
-            GLib.source_remove(this._fadeInTimeoutId);
-            this._fadeInTimeoutId = null;
-        }
-        if (this._dayLabel) {
-            this._dayLabel.destroy();
-            this._dayLabel = null;
-        }
-        if (this._dateLabel) {
-            this._dateLabel.destroy();
-            this._dateLabel = null;
-        }
-        if (this._timeLabel) {
-            this._timeLabel.destroy();
-            this._timeLabel = null;
-        }
+        this._destroyAllClocks();
+        this._clockWidgets = [];
+        this._wallClock = null;
     }
 
-    _rescaleAndReposition() {
-        if (!this._container) return;
-        const monitor = Main.layoutManager.primaryMonitor;
-        if (!monitor) return;
-        const styles = buildStyles(monitor.height);
-        this._dayLabel.set_style(styles.day);
-        this._dateLabel.set_style(styles.date);
-        this._timeLabel.set_style(styles.time);
-        this._reposition();
-    }
+    //#region buildAllClocks
+    _buildAllClocks() {
+        if (!this._ready) return;
 
-    _installFonts() {
-        // Путь к расширению — разные версии GNOME используют разные свойства
-        let extPath = '';
-        try {
-            if (this.dir)
-                extPath = this.dir.get_path();
-            else if (this.path)
-                extPath = this.path;
-            else if (this.metadata && this.metadata.path)
-                extPath = this.metadata.path;
-            else
-                extPath = GLib.build_filenamev([GLib.get_home_dir(),
-                    '.local', 'share', 'gnome-shell', 'extensions', 'modernclock@gnome-port']);
-        } catch (e) {
-            extPath = GLib.build_filenamev([GLib.get_home_dir(),
-                '.local', 'share', 'gnome-shell', 'extensions', 'modernclock@gnome-port']);
-        }
+        // Remove old clocks
+        this._destroyAllClocks();
+        this._clockWidgets = [];
 
-        log(`[ModernClock] extension path: ${extPath}`);
-
-        const fontsDir = Gio.File.new_for_path(GLib.build_filenamev([extPath, 'fonts']));
-        const home = GLib.get_home_dir();
-        const destPath = GLib.build_filenamev([home, '.local', 'share', 'fonts', 'modernclock']);
-        const destDir = Gio.File.new_for_path(destPath);
-
-        // Создать папку
-        try {
-            if (!destDir.query_exists(null))
-                destDir.make_directory_with_parents(null);
-        } catch (e) {
-            log(`[ModernClock] mkdir failed: ${e.message}`);
-        }
-
-        // Копировать шрифты
-        let needsUpdate = false;
-        for (const fname of ['Anurati.otf', 'Poppins.ttf']) {
-            const src = fontsDir.get_child(fname);
-            const dst = destDir.get_child(fname);
-
-            if (!src.query_exists(null)) {
-                log(`[ModernClock] font not found: ${src.get_path()}`);
-                continue;
-            }
-
-            if (dst.query_exists(null))
-                continue;
-
-            try {
-                src.copy(dst, Gio.FileCopyFlags.NONE, null, null);
-                needsUpdate = true;
-                log(`[ModernClock] copied ${fname}`);
-            } catch (e) {
-                log(`[ModernClock] copy failed ${fname}: ${e.message}`);
-            }
-        }
-
-        if (needsUpdate) {
-            try {
-                // Синхронный вызов fc-cache — ждём завершения,
-                // чтобы шрифт был доступен сразу при первом enable()
-                GLib.spawn_command_line_async('fc-cache -f');
-                log('[ModernClock] fc-cache completed');
-                // Force Pango to re-read fonts in current session
-                try {
-                    let fontMap = PangoCairo.FontMap.get_default();
-                    fontMap.config_changed();
-                    log('[ModernClock] Pango font map refreshed');
-                } catch(e) {
-                    log('[ModernClock] font map refresh failed: ' + e.message);
-                }
-            } catch (e) {
-                log(`[ModernClock] fc-cache failed: ${e.message}`);
-            }
-        }
-    }
-
-    _setupExtraMonitors() {
-        // Remove old extra widgets
-        if (this._extraWidgets) {
-            for (const w of this._extraWidgets) {
-                try { if (w.container.get_parent()) w.container.get_parent().remove_child(w.container); } catch(e) {}
-                w.container.destroy();
-            }
-            this._extraWidgets = [];
-        }
-
-        const primaryIndex = Main.layoutManager.primaryIndex;
         const monitors = Main.layoutManager.monitors;
+        monitors.forEach(monitor => {
+            const widget = this._buildClockWidget(monitor);
+            if (widget) this._clockWidgets.push(widget);
+        });
 
-        for (let i = 0; i < monitors.length; i++) {
-            if (i === primaryIndex) continue;
+        this._clockWidgets.forEach(clockWidget =>
+            Main.layoutManager._backgroundGroup.add_child(clockWidget)
+        );
 
-            const mon = monitors[i];
-            const styles = buildStyles(mon.height || 1080);
+        this._updateAllClocks();
+        this._clockWidgets.forEach(clockWidget => clockWidget.set_opacity(255));
+    }
 
-            const dayLabel = new St.Label({ style: styles.day, x_align: Clutter.ActorAlign.CENTER, x_expand: true });
-            const dateLabel = new St.Label({ style: styles.date, x_align: Clutter.ActorAlign.CENTER, x_expand: true });
-            const timeLabel = new St.Label({ style: styles.time, x_align: Clutter.ActorAlign.CENTER, x_expand: true });
+    //#region destroyAllClocks
+    _destroyAllClocks() {
+        if (!this._clockWidgets || this._clockWidgets.length === 0) return;
 
+        this._clockWidgets.forEach(clockWidget => {
+            // Disconnect reposition signal
+            if (clockWidget.allocationNotifyId) {
+                clockWidget.disconnect(clockWidget.allocationNotifyId);
+                clockWidget.allocationNotifyId = null;
+            }
+            // Remove from layoutManager
             try {
-                dayLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-                dateLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-                timeLabel.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-            } catch(e) {}
-
-            // Container с BinLayout — центрирование labels
-            const container = new St.Widget({
-                name: 'ModernClockExtra',
-                layout_manager: new Clutter.BinLayout(),
-                reactive: false, can_focus: false, track_hover: false,
-                width: mon.width,
-                height: mon.height,
-                x: mon.x, y: mon.y,
-                // КЛЮЧ: микро-фон даёт actor allocation в stage view
-                // второго монитора, иначе Clutter его не рендерит
-                style: 'background-color: rgba(0,0,0,0.01);',
-            });
-            const inner = new St.BoxLayout({
-                vertical: true,
-                x_align: Clutter.ActorAlign.CENTER,
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            inner.add_child(dayLabel);
-            inner.add_child(dateLabel);
-            inner.add_child(timeLabel);
-            container.add_child(inner);
-            container.opacity = 0;
-
-            // _backgroundGroup (MetaBackgroundGroup) — culling прячет под окнами
-            Main.layoutManager._backgroundGroup.add_child(container);
-            this._extraWidgets.push({ container, dayLabel, dateLabel, timeLabel, monitor: mon });
-        }
-
-        this._updateClock();
-        if (this._fadeInTimeoutId) {
-            GLib.source_remove(this._fadeInTimeoutId);
-            this._fadeInTimeoutId = null;
-        }
-        this._fadeInTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
-            this._repositionAll();
-            for (const w of this._extraWidgets) w.container.opacity = 255;
-            this._fadeInTimeoutId = null;
-            return GLib.SOURCE_REMOVE;
+                if (clockWidget.get_parent()) clockWidget.get_parent().remove_child(clockWidget);
+            } catch (e) {
+                this._logger.warn('Failed to remove widget:', e);
+            }
+            clockWidget.destroy();
         });
     }
 
-    _repositionAll() {
-        this._reposition();
-        const POSITION = this._settings.get_string('position');
-        for (const w of this._extraWidgets) {
-            const mon = w.monitor;
-            let x, y, h = w.container.height;
-            if (h < 10) h = 100;
-            const [, natH] = w.container.get_preferred_height(-1);
-            if (natH > h) h = natH;
-            switch (POSITION) {
-                case 'top-left': x = mon.x + MARGIN_X; y = mon.y + MARGIN_Y; break;
-                case 'bottom-right': x = mon.x + mon.width - w.container.width - MARGIN_X; y = mon.y + mon.height - h - MARGIN_Y; break;
-                case 'bottom-left': x = mon.x + MARGIN_X; y = mon.y + mon.height - h - MARGIN_Y; break;
-                case 'top-right': x = mon.x + mon.width - w.container.width - MARGIN_X; y = mon.y + MARGIN_Y; break;
-                case 'center': default: w.container.width = mon.width; x = mon.x; y = mon.y + (mon.height - h) / 2; break;
-            }
-            w.container.set_position(Math.round(x), Math.round(y));
-        }
+    //#region buildClockWidget
+    _buildClockWidget(monitor) {
+        const container = new St.BoxLayout({
+            name: `ModernClockWidget-${monitor.index}`,
+            style_class: 'modernclock-container',
+            can_focus: false,
+            reactive: false,
+            track_hover: false,
+            opacity: 0, // keep it hidden until ready
+        });
+        if (this._shellVersion >= 48) container.set_orientation(Clutter.Orientation.VERTICAL);
+        else container.set_vertical(true);
+
+        const styles = this._buildStyles(monitor);
+        container.weekdayLabel = new St.Label({
+            style: styles.day,
+            style_class: 'modernclock-day',
+        });
+        container.dateLabel = new St.Label({
+            style: styles.date,
+            style_class: 'modernclock-date',
+        });
+        container.timeLabel = new St.Label({
+            style: styles.time,
+            style_class: 'modernclock-time',
+        });
+        container.monitor = monitor;
+
+        [container.weekdayLabel, container.dateLabel, container.timeLabel].forEach(label => {
+            label.set_x_align(Clutter.ActorAlign.CENTER);
+            label.set_x_expand(true);
+            label.clutter_text.set_ellipsize(Pango.EllipsizeMode.NONE);
+            container.add_child(label);
+        });
+
+        container.allocationNotifyId = container.connect('notify::allocation', () =>
+            this._rescaleClockWidget(container)
+        );
+
+        return container;
     }
 
-    _reposition() {
-        if (!this._container) return;
+    //#region updateAllClocks
+    _updateAllClocks() {
+        if (!this._clockWidgets || this._clockWidgets.length === 0) {
+            this._logger.warn('There is no clock to update!');
+            return;
+        }
 
-        const monitor = Main.layoutManager.primaryMonitor;
-        if (!monitor) return;
+        const now = GLib.DateTime.new_now_local();
+        const dateDeco = this._settings.get_string('date-deco');
+        const timeDeco = this._settings.get_string('time-deco');
+        let weekday, date, time;
 
-        // get_preferred_*() возвращает [min, natural] — натуральная высота
-        // считается из стилей/шрифтов до аллокации, поэтому стабильнее .height
-        const [, natH] = this._container.get_preferred_height(-1);
-        const [, natW] = this._container.get_preferred_width(-1);
-        let w = Math.max(this._container.width, natW);
-        let h = Math.max(this._container.height, natH);
-        if (h < 10) h = 100;
+        // Weekday & Date
+        if (this._settings.get_boolean('use-english')) {
+            weekday = WEEKDAYS[now.get_day_of_week() - 1];
+            switch (this._settings.get_string('date-format')) {
+                case 'text':
+                    date = now.format(`%d ${MONTHS[now.get_month() - 1]} %Y`);
+                    break;
+                case 'numeric':
+                    date = now.format('%d.%m.%Y');
+                    break;
+                case 'short':
+                default:
+                    date = now.format(`%d ${MONTHS_SHORT[now.get_month() - 1]} %Y`);
+                    break;
+            }
+        } else {
+            weekday = now.format('%A').toUpperCase();
+            switch (this._settings.get_string('date-format')) {
+                case 'text':
+                    date = now.format('%d %B %Y').toUpperCase();
+                    break;
+                case 'numeric':
+                    date = now.format('%d.%m.%Y');
+                    break;
+                case 'short':
+                default:
+                    date = now.format('%d %b %Y').toUpperCase();
+                    break;
+            }
+        }
+        // Time
+        switch (this._settings.get_string('time-format')) {
+            case '24h':
+                time = `${now.format(`%H:%M`)}`;
+                break;
+            case 'ampm':
+            default: {
+                // Manually calculate AM/PM format because some locales don't support it
+                const hours = now.get_hour();
+                const h12 = hours % 12 || 12;
+                const ampm = hours < 12 ? 'AM' : 'PM';
+                time = `${now.format(`${h12.toString().padStart(2, '0')}:%M ${ampm}`)}`;
+                break;
+            }
+        }
+
+        this._clockWidgets.forEach(clockWidget => {
+            clockWidget.weekdayLabel.set_text(weekday);
+            clockWidget.dateLabel.set_text(`${dateDeco} ${date} ${dateDeco}`);
+            clockWidget.timeLabel.set_text(`${timeDeco} ${time} ${timeDeco}`);
+            this._rescaleClockWidget(clockWidget);
+        });
+    }
+
+    //#region buildStyles
+    _buildStyles(monitor) {
+        // Масштаб относительно 1080p
+        const referenceDimension = Math.min(monitor.width, monitor.height);
+        const scale = referenceDimension / BASE_HEIGHT;
+
+        const daySize = Math.round(BASE_WEEKDAY_SIZE * scale);
+        const dayLs = Math.round(BASE_WEEKDAY_LS * scale);
+        const subSize = Math.round(BASE_SUB_SIZE * scale);
+        const subLs = Math.round(BASE_SUB_LS * scale);
+        const padTopDate = Math.round(PAD_TOP_DATE * scale);
+        const padTopTime = Math.round(PAD_TOP_TIME * scale);
+
+        return {
+            day: `font-size: ${daySize}px; letter-spacing: ${dayLs}px;`,
+            date: `font-size: ${subSize}px; letter-spacing: ${subLs}px; padding-top: ${padTopDate}px;`,
+            time: `font-size: ${subSize}px; letter-spacing: ${subLs}px; padding-top: ${padTopTime}px;`,
+        };
+    }
+
+    //#region repositionClock
+    _repositionClockWidget(clockWidget) {
+        if (!clockWidget.monitor) return;
+
+        const positionX = this._settings.get_string('horizontal-position');
+        const positionY = this._settings.get_string('vertical-position');
+        const border = this._settings.get_double('border');
+
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(clockWidget.monitor.index);
+
+        const [, preferredWidth] = clockWidget.get_preferred_width(-1);
+        const [, preferredHeight] = clockWidget.get_preferred_height(-1);
+        const width = Math.max(clockWidget.width, preferredWidth);
+        const height = Math.max(clockWidget.height, preferredHeight);
+        const borderX = border * (workArea.width - width);
+        const borderY = border * (workArea.height - height);
 
         let x, y;
-        switch (POSITION) {
-            case 'top-left':
-                x = monitor.x + MARGIN_X;
-                y = monitor.y + MARGIN_Y;
+        switch (positionX) {
+            case 'left':
+                x = workArea.x + borderX;
                 break;
-            case 'bottom-right':
-                x = monitor.x + monitor.width - w - MARGIN_X;
-                y = monitor.y + monitor.height - h - MARGIN_Y;
-                break;
-            case 'bottom-left':
-                x = monitor.x + MARGIN_X;
-                y = monitor.y + monitor.height - h - MARGIN_Y;
+            case 'right':
+                x = workArea.x + workArea.width - width - borderX;
                 break;
             case 'center':
-                // Контейнер на всю ширину экрана, текст центрируется внутри
-                this._container.width = monitor.width;
-                x = monitor.x;
-                y = monitor.y + (monitor.height - h) / 2;
-                break;
-            case 'top-right':
             default:
-                x = monitor.x + monitor.width - w - MARGIN_X;
-                y = monitor.y + MARGIN_Y;
+                x = workArea.x + (workArea.width - width) / 2;
                 break;
         }
-
-        this._container.set_position(Math.round(x), Math.round(y));
+        switch (positionY) {
+            case 'top':
+                y = workArea.y + borderY;
+                break;
+            case 'bottom':
+                y = workArea.y + workArea.height - height - borderY;
+                break;
+            case 'center':
+            default:
+                y = workArea.y + (workArea.height - height) / 2;
+                break;
+        }
+        clockWidget.set_position(Math.round(x), Math.round(y));
     }
 
-    _updateClock() {
-        if (!this._dayLabel) return;
+    //#region rescaleClockWidget
+    _rescaleClockWidget(clockWidget) {
+        const monitor = Main.layoutManager.monitors[clockWidget.monitor.index];
+        if (!monitor) return;
 
-        const now = new Date();
+        const styles = this._buildStyles(monitor);
+        clockWidget.weekdayLabel.set_style(styles.day);
+        clockWidget.dateLabel.set_style(styles.date);
+        clockWidget.timeLabel.set_style(styles.time);
+        clockWidget.monitor = monitor;
+        this._repositionClockWidget(clockWidget);
+    }
 
-        this._dayLabel.set_text(DAYS[now.getDay()]);
+    //#region installFonts
+    _installFonts() {
+        const fontsDir = Gio.File.new_for_path(
+            GLib.build_filenamev([GLib.get_user_data_dir(), 'fonts', 'modernclock'])
+        );
+        if (this._fontsPresent(fontsDir)) return;
 
-        const dd  = String(now.getDate()).padStart(2, '0');
-        const dateFormat = this._settings.get_string('date-format');
-        if (dateFormat === 'numeric') {
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
-            this._dateLabel.set_text(`${dd}.${mm}.${now.getFullYear()}`);
-        } else {
-            const mmm = MONTHS[now.getMonth()];
-            this._dateLabel.set_text(`${dd} ${mmm} ${now.getFullYear()}`);
-        }
+        try {
+            if (!fontsDir.query_exists(null)) fontsDir.make_directory_with_parents(null);
+            const srcDir = Gio.File.new_for_path(GLib.build_filenamev([this.path, 'fonts']));
+            const children = srcDir.enumerate_children(
+                'standard::name,standard::type',
+                Gio.FileQueryInfoFlags.NONE,
+                null
+            );
 
-        let hours = now.getHours();
-        const mins = String(now.getMinutes()).padStart(2, '0');
-        let t;
-        if (this._settings.get_boolean('use-24h')) {
-            t = `${String(hours).padStart(2, '0')}:${mins}`;
-        } else {
-            const ampm = hours < 12 ? 'AM' : 'PM';
-            const h12 = hours % 12 || 12;
-            t = `${String(h12).padStart(2, '0')}:${mins} ${ampm}`;
-        }
-        this._timeLabel.set_text(`${TIME_CHAR} ${t} ${TIME_CHAR}`);
+            let info;
+            while ((info = children.next_file(null)) !== null) {
+                const name = info.get_name();
+                const srcChild = srcDir.get_child(name);
+                const destChild = fontsDir.get_child(name);
 
-        // Обновляем extra-виджеты на других мониторах
-        if (this._extraWidgets) {
-            const dayText = this._dayLabel.text;
-            const dateText = this._dateLabel.text;
-            const timeText = this._timeLabel.text;
-            for (const w of this._extraWidgets) {
-                w.dayLabel.set_text(dayText);
-                w.dateLabel.set_text(dateText);
-                w.timeLabel.set_text(timeText);
+                srcChild.copy(destChild, Gio.FileCopyFlags.OVERWRITE, null, null);
             }
+
+            // Refresh the system font cache (fc-cache -f) synchronuously so fontconfig sees the
+            // extension's bundled font on first enable. Then invalidate Pango's font map and
+            // rebuild the clocks so they pick up the newly-registered font.
+            const proc = Gio.Subprocess.new(['fc-cache', '-f'], Gio.SubprocessFlags.NONE);
+            try {
+                proc.wait(null);
+            } catch (e) {
+                this._logger.warn('fc-cache -f failed:', e);
+            }
+            try {
+                const fontMap = PangoCairo.FontMap.get_default();
+                fontMap.changed();
+
+                this._buildAllClocks();
+            } catch (e) {
+                this._logger.warn('FontMap update failed:', e);
+            }
+        } catch (e) {
+            this._logger.warn('Failed to install fonts:', e);
         }
+    }
+
+    //#region fontsPresent
+    _fontsPresent(fontsDir) {
+        if (!fontsDir.query_exists(null)) return false;
+
+        const children = fontsDir.enumerate_children(
+            'standard::name',
+            Gio.FileQueryInfoFlags.NONE,
+            null
+        );
+        const hasAny = children.next_file(null) !== null;
+        children.close(null);
+        return hasAny;
     }
 }

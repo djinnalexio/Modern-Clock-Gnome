@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 # SPDX-FileCopyrightText: No rights reserved
 
-.PHONY: disable enable format install lint pack pot prefs test uninstall
+.PHONY: disable enable format install lint pack pot prefs reset test uninstall
 
 # set data to default if not it is not already set
 XDG_DATA_HOME ?= $(HOME)/.local/share
@@ -12,6 +12,8 @@ NODE_MODULES_STAMP := node_modules/.install-stamp
 UUID := $(shell jq -r '.uuid' src/metadata.json)
 FONTS_DIR = $(XDG_DATA_HOME)/fonts/modernclock
 
+.DEFAULT_GOAL := pack
+
 pack:
 	gnome-extensions pack ./src --extra-source=fonts --force
 	mkdir -p dist
@@ -21,13 +23,10 @@ pack:
 
 install: pack
 	gnome-extensions install dist/$(UUID).shell-extension.zip --force
-	mkdir -p $(FONTS_DIR)
-	cp -f src/fonts/* $(FONTS_DIR)/
-	fc-cache -f || echo "warning: fc-cache failed, font cache not refreshed"
 	@echo "✓ Готово! Перелогинься."
 	@echo ""
 
-uninstall:
+uninstall: disable
 	gnome-extensions uninstall $(UUID)
 	rm $(FONTS_DIR) -rf
 	@echo "✓ Удалено"
@@ -46,6 +45,11 @@ enable:
 disable:
 	gnome-extensions disable $(UUID)
 	@echo "✓ Extension disabled."
+	@echo ""
+
+reset:
+	dconf reset -f /org/gnome/shell/extensions/modernclock/
+	@echo "✓ Extension settings reset."
 	@echo ""
 
 test: install

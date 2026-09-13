@@ -1,19 +1,67 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<schemalist>
-  <schema id="org.gnome.shell.extensions.modernclock" path="/org/gnome/shell/extensions/modernclock/">
-    <key name="use-24h" type="b">
-      <default>false</default>
-      <summary>Use 24-hour format</summary>
-      <description>Use 24-hour time format instead of 12-hour AM/PM</description>
-    </key>
-    <key name="date-format" type="s">
-      <default>'text'</default>
-      <summary>Date format</summary>
-      <description>text = 01 MAY 2026, numeric = 01.05.2026</description>
-    </key>
-    <key name="position" type="s">
-      <default>'center'</default>
-      <summary>Widget position</summary>
-    </key>
-  </schema>
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- SPDX-FileCopyrightText: 2026 Modern Clock for GNOME Contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<schemalist gettext-domain='modernclock@gnome-port'>
+    <enum id='org.gnome.shell.extensions.modernclock.horizontal-position'>
+        <value value='0' nick='left' />
+        <value value='1' nick='center' />
+        <value value='2' nick='right' />
+    </enum>
+    <enum id='org.gnome.shell.extensions.modernclock.vertical-position'>
+        <value value='0' nick='top' />
+        <value value='1' nick='center' />
+        <value value='2' nick='bottom' />
+    </enum>
+    <enum id='org.gnome.shell.extensions.modernclock.date-format'>
+        <value value='0' nick='numeric' />
+        <value value='1' nick='short' />
+        <value value='2' nick='text' />
+    </enum>
+    <enum id='org.gnome.shell.extensions.modernclock.time-format'>
+        <value value='0' nick='24h' />
+        <value value='1' nick='ampm' />
+    </enum>
+    <schema id='org.gnome.shell.extensions.modernclock' path='/org/gnome/shell/extensions/modernclock/'>
+        <key name='horizontal-position' enum='org.gnome.shell.extensions.modernclock.horizontal-position'>
+            <default>'center'</default>
+            <summary>Horizontal position</summary>
+            <description>Horizontal position of the widget on the desktop.</description>
+        </key>
+        <key name='vertical-position' enum='org.gnome.shell.extensions.modernclock.vertical-position'>
+            <default>'center'</default>
+            <summary>Vertical position</summary>
+            <description>Vertical position of the widget on the desktop.</description>
+        </key>
+        <key name='border' type='d'>
+            <default>0.1</default>
+            <range min='0' max='0.4'/>
+            <summary>Border gap</summary>
+            <description>Space between the clock and the edge of the screen when placed on the sides in %.</description>
+        </key>
+        <key name='use-english' type='b'>
+            <default>false</default>
+            <summary>Use English</summary>
+            <description>Use English for the date instead of the system language.</description>
+        </key>
+        <key name='date-format' enum='org.gnome.shell.extensions.modernclock.date-format'>
+            <default>'short'</default>
+            <summary>Date format</summary>
+            <description>numeric: '01.09.2026', short: '01 SEP 2026', text: '01 SEPTEMBER 2026'</description>
+        </key>
+        <key name='date-deco' type='s'>
+            <default>''</default>
+            <summary>Date decoration</summary>
+            <description>Characters around the date.</description>
+        </key>
+        <key name='time-format' enum='org.gnome.shell.extensions.modernclock.time-format'>
+            <default>'ampm'</default>
+            <summary>Time format</summary>
+            <description>24-hour or AM/PM.</description>
+        </key>
+        <key name='time-deco' type='s'>
+            <default>'-'</default>
+            <summary>Time decoration</summary>
+            <description>Characters around the time.</description>
+        </key>
+    </schema>
 </schemalist>
