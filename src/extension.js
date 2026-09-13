@@ -6,7 +6,6 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import Pango from 'gi://Pango';
-import PangoCairo from 'gi://PangoCairo';
 import St from 'gi://St';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -376,24 +375,6 @@ export default class ModernClockExtension extends Extension {
                 const destChild = fontsDir.get_child(name);
 
                 srcChild.copy(destChild, Gio.FileCopyFlags.OVERWRITE, null, null);
-            }
-
-            // Refresh the system font cache (fc-cache -f) synchronuously so fontconfig sees the
-            // extension's bundled font on first enable. Then invalidate Pango's font map and
-            // rebuild the clocks so they pick up the newly-registered font.
-            const proc = Gio.Subprocess.new(['fc-cache', '-f'], Gio.SubprocessFlags.NONE);
-            try {
-                proc.wait(null);
-            } catch (e) {
-                this._logger.warn('fc-cache -f failed:', e);
-            }
-            try {
-                const fontMap = PangoCairo.FontMap.get_default();
-                fontMap.changed();
-
-                this._buildAllClocks();
-            } catch (e) {
-                this._logger.warn('FontMap update failed:', e);
             }
         } catch (e) {
             this._logger.warn('Failed to install fonts:', e);
