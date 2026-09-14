@@ -21,54 +21,51 @@ export default class ModernClockPreferences extends ExtensionPreferences {
             icon_name: 'preferences-system-time-symbolic',
         });
 
-        window.default_width = 270;
-        window.default_height = 660;
+        window.default_width = 380;
+        window.default_height = 620;
         window.add(page);
 
         //#region Position Group
         const positionGroup = new Adw.PreferencesGroup({ title: _('Position') });
         page.add(positionGroup);
 
+        function addPositionSlider(key, marks, inverted) {
+            const axisRow = new Adw.PreferencesRow({ activatable: false });
+            const axisScale = new Gtk.Scale({
+                adjustment: new Gtk.Adjustment({
+                    lower: 0,
+                    upper: 1,
+                    step_increment: 0.01,
+                    page_increment: 0.1,
+                }),
+                digits: 2,
+                round_digits: 2,
+                orientation: Gtk.Orientation.HORIZONTAL,
+                inverted,
+                hexpand: true,
+                valign: Gtk.Align.CENTER,
+                has_origin: false,
+                margin_start: 12,
+                margin_end: 12,
+                margin_top: 8,
+                margin_bottom: 8,
+            });
+            axisScale.add_mark(0.1, Gtk.PositionType.TOP, marks[0]);
+            axisScale.add_mark(0.25, Gtk.PositionType.TOP, null);
+            axisScale.add_mark(0.5, Gtk.PositionType.TOP, null);
+            axisScale.add_mark(0.75, Gtk.PositionType.TOP, null);
+            axisScale.add_mark(0.9, Gtk.PositionType.TOP, marks[1]);
+            axisRow.set_child(axisScale);
+            settings.bind(key, axisScale.adjustment, 'value', Gio.SettingsBindFlags.DEFAULT);
+            positionGroup.add(axisRow);
+        }
+
         // Horizontal
-        const horizontalPositionRow = new Adw.ComboRow({
-            title: _('Horizontal Alignment'),
-            model: Gtk.StringList.new([_('Left'), _('Center'), _('Right')]),
-            selected: settings.get_enum('horizontal-position'),
-        });
-        horizontalPositionRow.connect('notify::selected', widget =>
-            settings.set_enum('horizontal-position', widget.get_selected())
-        );
-        positionGroup.add(horizontalPositionRow);
+        addPositionSlider('position-x', [_('Left'), _('Right')], false);
 
         // Vertical
-        const verticalPositionRow = new Adw.ComboRow({
-            title: _('Vertical Alignment'),
-            model: Gtk.StringList.new([_('Top'), _('Center'), _('Bottom')]),
-            selected: settings.get_enum('vertical-position'),
-        });
-        verticalPositionRow.connect('notify::selected', widget =>
-            settings.set_enum('vertical-position', widget.get_selected())
-        );
-        positionGroup.add(verticalPositionRow);
-
-        // Border
-        const borderRow = new Adw.ActionRow({ title: _('Border') });
-        const borderScale = new Gtk.Scale({
-            orientation: Gtk.Orientation.HORIZONTAL,
-            adjustment: new Gtk.Adjustment({
-                lower: 0,
-                upper: 0.4,
-                step_increment: 0.01,
-                page_increment: 0.05,
-            }),
-            digits: 2,
-            round_digits: 2,
-            hexpand: true,
-            valign: Gtk.Align.CENTER,
-        });
-        borderRow.add_suffix(borderScale);
-        settings.bind('border', borderScale.adjustment, 'value', Gio.SettingsBindFlags.DEFAULT);
-        positionGroup.add(borderRow);
+        addPositionSlider('position-y', [_('Top'), _('Bottom')], true);
+        //#endregion
 
         //#region Date Group
         const dateGroup = new Adw.PreferencesGroup({ title: _('Date') });

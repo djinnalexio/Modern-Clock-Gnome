@@ -2,16 +2,6 @@
 <!-- SPDX-FileCopyrightText: 2026 Modern Clock for GNOME Contributors -->
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <schemalist gettext-domain='modernclock@gnome-port'>
-    <enum id='org.gnome.shell.extensions.modernclock.horizontal-position'>
-        <value value='0' nick='left' />
-        <value value='1' nick='center' />
-        <value value='2' nick='right' />
-    </enum>
-    <enum id='org.gnome.shell.extensions.modernclock.vertical-position'>
-        <value value='0' nick='top' />
-        <value value='1' nick='center' />
-        <value value='2' nick='bottom' />
-    </enum>
     <enum id='org.gnome.shell.extensions.modernclock.date-format'>
         <value value='0' nick='numeric' />
         <value value='1' nick='short' />
@@ -22,21 +12,17 @@
         <value value='1' nick='ampm' />
     </enum>
     <schema id='org.gnome.shell.extensions.modernclock' path='/org/gnome/shell/extensions/modernclock/'>
-        <key name='horizontal-position' enum='org.gnome.shell.extensions.modernclock.horizontal-position'>
-            <default>'center'</default>
+        <key name='position-x' type='d'>
+            <default>0.5</default>
+            <range min='0' max='1'/>
             <summary>Horizontal position</summary>
             <description>Horizontal position of the widget on the desktop.</description>
         </key>
-        <key name='vertical-position' enum='org.gnome.shell.extensions.modernclock.vertical-position'>
-            <default>'center'</default>
+        <key name='position-y' type='d'>
+            <default>0.5</default>
+            <range min='0' max='1'/>
             <summary>Vertical position</summary>
             <description>Vertical position of the widget on the desktop.</description>
-        </key>
-        <key name='border' type='d'>
-            <default>0.1</default>
-            <range min='0' max='0.4'/>
-            <summary>Border gap</summary>
-            <description>Space between the clock and the edge of the screen when placed on the sides in %.</description>
         </key>
         <key name='use-english' type='b'>
             <default>false</default>

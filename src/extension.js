@@ -298,44 +298,18 @@ export default class ModernClockExtension extends Extension {
     _repositionClockWidget(clockWidget) {
         if (!clockWidget.monitor) return;
 
-        const positionX = this._settings.get_string('horizontal-position');
-        const positionY = this._settings.get_string('vertical-position');
-        const border = this._settings.get_double('border');
-
         const workArea = Main.layoutManager.getWorkAreaForMonitor(clockWidget.monitor.index);
 
+        const positionX = this._settings.get_double('position-x');
+        const positionY = this._settings.get_double('position-y');
         const [, preferredWidth] = clockWidget.get_preferred_width(-1);
         const [, preferredHeight] = clockWidget.get_preferred_height(-1);
         const width = Math.max(clockWidget.width, preferredWidth);
         const height = Math.max(clockWidget.height, preferredHeight);
-        const borderX = border * (workArea.width - width);
-        const borderY = border * (workArea.height - height);
 
-        let x, y;
-        switch (positionX) {
-            case 'left':
-                x = workArea.x + borderX;
-                break;
-            case 'right':
-                x = workArea.x + workArea.width - width - borderX;
-                break;
-            case 'center':
-            default:
-                x = workArea.x + (workArea.width - width) / 2;
-                break;
-        }
-        switch (positionY) {
-            case 'top':
-                y = workArea.y + borderY;
-                break;
-            case 'bottom':
-                y = workArea.y + workArea.height - height - borderY;
-                break;
-            case 'center':
-            default:
-                y = workArea.y + (workArea.height - height) / 2;
-                break;
-        }
+        const x = workArea.x + positionX * (workArea.width - width);
+        const y = workArea.y + positionY * (workArea.height - height);
+
         clockWidget.set_position(Math.round(x), Math.round(y));
     }
 
