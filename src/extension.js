@@ -38,6 +38,7 @@ const MONTHS = [
     'DECEMBER',
 ];
 const MONTHS_SHORT = MONTHS.map(m => m.slice(0, 3));
+//#endregion
 
 export default class ModernClockExtension extends Extension {
     //#region enable
@@ -95,6 +96,7 @@ export default class ModernClockExtension extends Extension {
             }
         });
     }
+    //#endregion
 
     //#region disable
     disable() {
@@ -123,6 +125,7 @@ export default class ModernClockExtension extends Extension {
         this._clockWidgets = [];
         this._wallClock = null;
     }
+    //#endregion
 
     //#region buildAllClocks
     _buildAllClocks() {
@@ -145,6 +148,7 @@ export default class ModernClockExtension extends Extension {
         this._updateAllClocks();
         this._clockWidgets.forEach(clockWidget => clockWidget.set_opacity(255));
     }
+    //#endregion
 
     //#region destroyAllClocks
     _destroyAllClocks() {
@@ -165,6 +169,7 @@ export default class ModernClockExtension extends Extension {
             clockWidget.destroy();
         });
     }
+    //#endregion
 
     //#region buildClockWidget
     _buildClockWidget(monitor) {
@@ -207,6 +212,7 @@ export default class ModernClockExtension extends Extension {
 
         return container;
     }
+    //#endregion
 
     //#region updateAllClocks
     _updateAllClocks() {
@@ -273,6 +279,7 @@ export default class ModernClockExtension extends Extension {
             this._rescaleClockWidget(clockWidget);
         });
     }
+    //#endregion
 
     //#region buildStyles
     _buildStyles(monitor) {
@@ -293,6 +300,7 @@ export default class ModernClockExtension extends Extension {
             time: `font-size: ${subSize}px; letter-spacing: ${subLs}px; padding-top: ${padTopTime}px;`,
         };
     }
+    //#endregion
 
     //#region repositionClock
     _repositionClockWidget(clockWidget) {
@@ -312,6 +320,7 @@ export default class ModernClockExtension extends Extension {
 
         clockWidget.set_position(Math.round(x), Math.round(y));
     }
+    //#endregion
 
     //#region rescaleClockWidget
     _rescaleClockWidget(clockWidget) {
@@ -325,6 +334,7 @@ export default class ModernClockExtension extends Extension {
         clockWidget.monitor = monitor;
         this._repositionClockWidget(clockWidget);
     }
+    //#endregion
 
     //#region installFonts
     _installFonts() {
@@ -354,6 +364,7 @@ export default class ModernClockExtension extends Extension {
             this._logger.warn('Failed to install fonts:', e);
         }
     }
+    //#endregion
 
     //#region fontsPresent
     _fontsPresent(fontsDir) {
@@ -368,4 +379,5 @@ export default class ModernClockExtension extends Extension {
         children.close(null);
         return hasAny;
     }
+    //#endregion
 }

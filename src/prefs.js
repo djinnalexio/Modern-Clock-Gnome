@@ -115,6 +115,7 @@ export default class ModernClockPreferences extends ExtensionPreferences {
         settings.bind('date-deco', dateDecoEntry.buffer, 'text', Gio.SettingsBindFlags.DEFAULT);
         dateDecoRow.add_suffix(dateDecoEntry);
         dateGroup.add(dateDecoRow);
+        //#endregion
 
         //#region Time group
         const timeGroup = new Adw.PreferencesGroup({ title: _('Time') });
@@ -160,5 +161,6 @@ export default class ModernClockPreferences extends ExtensionPreferences {
         settings.bind('time-deco', timeDecoEntry.buffer, 'text', Gio.SettingsBindFlags.DEFAULT);
         timeDecoRow.add_suffix(timeDecoEntry);
         timeGroup.add(timeDecoRow);
+        //#endregion
     }
 }
