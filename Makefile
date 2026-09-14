@@ -15,7 +15,7 @@ FONTS_DIR = $(XDG_DATA_HOME)/fonts/modernclock
 .DEFAULT_GOAL := pack
 
 pack:
-	gnome-extensions pack ./src --extra-source=fonts --force
+	gnome-extensions pack ./src --extra-source=fonts  --extra-source="../LICENSE"  --force
 	mkdir -p dist
 	mv -f $(UUID).shell-extension.zip dist/
 	@echo "✓ Archive: dist/$(UUID).shell-extension.zip"
