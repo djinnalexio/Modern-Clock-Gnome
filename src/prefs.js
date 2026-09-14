@@ -10,14 +10,16 @@ import {
     ExtensionPreferences,
     gettext as _,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import * as Config from 'resource:///org/gnome/Shell/Extensions/js/misc/config.js';
 
 export default class ModernClockPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
+        const shellVersion = parseFloat(Config.PACKAGE_VERSION);
 
         // Page
         const page = new Adw.PreferencesPage({
-            title: 'Modern Clock',
+            title: this.metadata.name,
             icon_name: 'preferences-system-time-symbolic',
         });
 
@@ -72,8 +74,15 @@ export default class ModernClockPreferences extends ExtensionPreferences {
         page.add(dateGroup);
 
         // Date Language — only relevant if the time and date information isn't already in English
-        const isLcTimeEnglish =
-            GLib.get_language_names_with_category('LC_TIME')[0].startsWith('en');
+        let isLcTimeEnglish;
+        // On older versions, `GLib.get_language_names_with_category` doesn't get the user locale setting override
+        if (shellVersion >= 47) {
+            isLcTimeEnglish = GLib.get_language_names_with_category('LC_TIME')[0].startsWith('en');
+        } else {
+            const localeSettings = new Gio.Settings({ schema_id: 'org.gnome.system.locale' });
+            isLcTimeEnglish = localeSettings.get_string('region').startsWith('en');
+        }
+
         if (!isLcTimeEnglish) {
             const englishRow = new Adw.SwitchRow({ title: _('English Date') });
             settings.bind('use-english', englishRow, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -123,8 +132,7 @@ export default class ModernClockPreferences extends ExtensionPreferences {
 
         // Time format
         let timeFormatRow;
-        // 'Adw.ToggleGroup' available in GNOME 47+
-        if (Adw.ToggleGroup) {
+        if (shellVersion >= 47) {
             timeFormatRow = new Adw.ActionRow({ title: _('Format') });
             const timeFormatToggleGroup = new Adw.ToggleGroup({
                 valign: Gtk.Align.CENTER,
