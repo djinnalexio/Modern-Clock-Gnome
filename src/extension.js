@@ -224,39 +224,31 @@ export default class ModernClockExtension extends Extension {
         }
 
         const now = GLib.DateTime.new_now_local();
+        const useEnglish = this._settings.get_boolean('use-english');
         const dateDeco = this._settings.get_string('date-deco');
         const timeDeco = this._settings.get_string('time-deco');
-        let weekday, date, time;
 
-        // Weekday & Date
-        if (this._settings.get_boolean('use-english')) {
-            weekday = WEEKDAYS[now.get_day_of_week() - 1];
-            switch (this._settings.get_string('date-format')) {
-                case 'text':
-                    date = now.format(`%d ${MONTHS[now.get_month() - 1]} %Y`);
-                    break;
-                case 'numeric':
-                    date = now.format('%d.%m.%Y');
-                    break;
-                case 'short':
-                default:
-                    date = now.format(`%d ${MONTHS_SHORT[now.get_month() - 1]} %Y`);
-                    break;
-            }
-        } else {
-            weekday = now.format('%A').toUpperCase();
-            switch (this._settings.get_string('date-format')) {
-                case 'text':
-                    date = now.format('%d %B %Y').toUpperCase();
-                    break;
-                case 'numeric':
-                    date = now.format('%d.%m.%Y');
-                    break;
-                case 'short':
-                default:
-                    date = now.format('%d %b %Y').toUpperCase();
-                    break;
-            }
+        // Weekday
+        const weekday = useEnglish
+            ? WEEKDAYS[now.get_day_of_week() - 1]
+            : now.format('%A').toUpperCase();
+        // Date
+        let date, time;
+        switch (this._settings.get_string('date-format')) {
+            case 'text':
+                date = useEnglish
+                    ? now.format(`%d ${MONTHS[now.get_month() - 1]} %Y`)
+                    : now.format('%d %B %Y').toUpperCase();
+                break;
+            case 'numeric':
+                date = now.format('%d.%m.%Y');
+                break;
+            case 'short':
+            default:
+                date = useEnglish
+                    ? now.format(`%d ${MONTHS_SHORT[now.get_month() - 1]} %Y`)
+                    : now.format('%d %b %Y').toUpperCase();
+                break;
         }
         // Time
         switch (this._settings.get_string('time-format')) {
