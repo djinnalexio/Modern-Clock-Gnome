@@ -47,7 +47,7 @@ export default class ModernClockExtension extends Extension {
         this._shellVersion = parseFloat(Config.PACKAGE_VERSION);
 
         // ── Custom extension logger ──────────────────────────────────────────
-        this._logger = this._shellVersion >= 48 ? this.getLogger() : console;
+        this._logger = this._shellVersion >= 48 ? this.getLogger() : this._getFallbackLogger();
 
         // ── Connect to settings ──────────────────────────────────────────────
         this._settings = this.getSettings();
@@ -388,6 +388,18 @@ export default class ModernClockExtension extends Extension {
         } finally {
             if (children) children.close(null);
         }
+    }
+    //#endregion
+
+    //#region getFallbackLogger
+    _getFallbackLogger() {
+        const prefix = `[${this.metadata.name}]`;
+        return {
+            log: (...args) => console.log(prefix, ...args),
+            warn: (...args) => console.warn(prefix, ...args),
+            error: (...args) => console.error(prefix, ...args),
+            debug: (...args) => console.debug(prefix, ...args),
+        };
     }
     //#endregion
 }
