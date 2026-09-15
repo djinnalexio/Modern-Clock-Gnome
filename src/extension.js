@@ -345,10 +345,11 @@ export default class ModernClockExtension extends Extension {
         );
         if (this._fontsPresent(fontsDir)) return;
 
+        let children = null;
         try {
             if (!fontsDir.query_exists(null)) fontsDir.make_directory_with_parents(null);
             const srcDir = Gio.File.new_for_path(GLib.build_filenamev([this.path, 'fonts']));
-            const children = srcDir.enumerate_children(
+            children = srcDir.enumerate_children(
                 'standard::name,standard::type',
                 Gio.FileQueryInfoFlags.NONE,
                 null
@@ -364,6 +365,8 @@ export default class ModernClockExtension extends Extension {
             }
         } catch (e) {
             this._logger.warn('Failed to install fonts:', e);
+        } finally {
+            if (children) children.close(null);
         }
     }
     //#endregion
