@@ -372,14 +372,19 @@ export default class ModernClockExtension extends Extension {
     _fontsPresent(fontsDir) {
         if (!fontsDir.query_exists(null)) return false;
 
-        const children = fontsDir.enumerate_children(
-            'standard::name',
-            Gio.FileQueryInfoFlags.NONE,
-            null
-        );
-        const hasAny = children.next_file(null) !== null;
-        children.close(null);
-        return hasAny;
+        let children = null;
+        try {
+            children = fontsDir.enumerate_children(
+                'standard::name',
+                Gio.FileQueryInfoFlags.NONE,
+                null
+            );
+            return children.next_file(null) !== null;
+        } catch {
+            return false;
+        } finally {
+            if (children) children.close(null);
+        }
     }
     //#endregion
 }
