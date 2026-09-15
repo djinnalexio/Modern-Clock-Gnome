@@ -216,6 +216,8 @@ export default class ModernClockExtension extends Extension {
 
     //#region updateAllClocks
     _updateAllClocks() {
+        if (!this._ready) return;
+
         if (!this._clockWidgets || this._clockWidgets.length === 0) {
             this._logger.warn('There is no clock to update!');
             return;
