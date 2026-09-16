@@ -15,12 +15,15 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 //#region Constants
 // ── Базовые размеры (для 1080p) ──────────────────────────────────────────────
 const BASE_HEIGHT = 1080;
-const BASE_WEEKDAY_SIZE = 86;
+const BASE_WEEKDAY_SIZE = 88;
 const BASE_WEEKDAY_LS = 20;
-const BASE_SUB_SIZE = 23;
+const BASE_SUB_SIZE = 24;
 const BASE_SUB_LS = 4;
-const PAD_TOP_DATE = 8;
-const PAD_TOP_TIME = 4;
+const BASE_DATE_TOP_PAD = 8;
+const BASE_TIME_TOP_PAD = 4;
+const MIN_SCALE = 0.5;
+const NEUTRAL_SCALE = 1.0;
+const MAX_SCALE = 2.0;
 // ── English weekdays and months ──────────────────────────────────────────────
 const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const MONTHS = [
@@ -279,19 +282,25 @@ export default class ModernClockExtension extends Extension {
     _buildStyles(monitor) {
         // Масштаб относительно 1080p
         const referenceDimension = Math.min(monitor.width, monitor.height);
-        const scale = referenceDimension / BASE_HEIGHT;
+        const monitorScale = referenceDimension / BASE_HEIGHT;
+        const rawScale = this._settings.get_double('scale');
+        // convert 0-1 to MIN_SCALE-MAX_SCALE
+        const sizeScale =
+            rawScale < 0.5
+                ? MIN_SCALE + (NEUTRAL_SCALE - MIN_SCALE) * (rawScale / 0.5)
+                : NEUTRAL_SCALE + (MAX_SCALE - NEUTRAL_SCALE) * ((rawScale - 0.5) / 0.5);
 
-        const daySize = Math.round(BASE_WEEKDAY_SIZE * scale);
-        const dayLs = Math.round(BASE_WEEKDAY_LS * scale);
-        const subSize = Math.round(BASE_SUB_SIZE * scale);
-        const subLs = Math.round(BASE_SUB_LS * scale);
-        const padTopDate = Math.round(PAD_TOP_DATE * scale);
-        const padTopTime = Math.round(PAD_TOP_TIME * scale);
+        const weekdaySize = Math.round(BASE_WEEKDAY_SIZE * monitorScale * sizeScale);
+        const weekdayLS = Math.round(BASE_WEEKDAY_LS * monitorScale * sizeScale);
+        const subSize = Math.round(BASE_SUB_SIZE * monitorScale * sizeScale);
+        const subLS = Math.round(BASE_SUB_LS * monitorScale * sizeScale);
+        const padTopDate = Math.round(BASE_DATE_TOP_PAD * monitorScale * sizeScale);
+        const padTopTime = Math.round(BASE_TIME_TOP_PAD * monitorScale * sizeScale);
 
         return {
-            day: `font-size: ${daySize}px; letter-spacing: ${dayLs}px;`,
-            date: `font-size: ${subSize}px; letter-spacing: ${subLs}px; padding-top: ${padTopDate}px;`,
-            time: `font-size: ${subSize}px; letter-spacing: ${subLs}px; padding-top: ${padTopTime}px;`,
+            day: `font-size: ${weekdaySize}px; letter-spacing: ${weekdayLS}px;`,
+            date: `font-size: ${subSize}px; letter-spacing: ${subLS}px; padding-top: ${padTopDate}px;`,
+            time: `font-size: ${subSize}px; letter-spacing: ${subLS}px; padding-top: ${padTopTime}px;`,
         };
     }
     //#endregion

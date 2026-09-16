@@ -23,15 +23,15 @@ export default class ModernClockPreferences extends ExtensionPreferences {
             icon_name: 'preferences-system-time-symbolic',
         });
 
-        window.default_width = 380;
-        window.default_height = 620;
+        window.default_width = 400;
+        window.default_height = 660;
         window.add(page);
 
-        //#region Position Group
-        const positionGroup = new Adw.PreferencesGroup({ title: _('Position') });
-        page.add(positionGroup);
+        //#region Layout Group
+        const layoutGroup = new Adw.PreferencesGroup({ title: _('Layout') });
+        page.add(layoutGroup);
 
-        function addPositionSlider(key, marks, inverted) {
+        function addMarkedSlider(key, marks, inverted = false) {
             const axisRow = new Adw.PreferencesRow({ activatable: false });
             const axisScale = new Gtk.Scale({
                 adjustment: new Gtk.Adjustment({
@@ -49,8 +49,8 @@ export default class ModernClockPreferences extends ExtensionPreferences {
                 has_origin: false,
                 margin_start: 12,
                 margin_end: 12,
-                margin_top: 8,
-                margin_bottom: 8,
+                margin_top: 4,
+                margin_bottom: 4,
             });
             axisScale.add_mark(0.1, Gtk.PositionType.TOP, marks[0]);
             axisScale.add_mark(0.25, Gtk.PositionType.TOP, null);
@@ -59,14 +59,17 @@ export default class ModernClockPreferences extends ExtensionPreferences {
             axisScale.add_mark(0.9, Gtk.PositionType.TOP, marks[1]);
             axisRow.set_child(axisScale);
             settings.bind(key, axisScale.adjustment, 'value', Gio.SettingsBindFlags.DEFAULT);
-            positionGroup.add(axisRow);
+            layoutGroup.add(axisRow);
         }
 
         // Horizontal
-        addPositionSlider('position-x', [_('Left'), _('Right')], false);
+        addMarkedSlider('position-x', [_('Left'), _('Right')]);
 
         // Vertical
-        addPositionSlider('position-y', [_('Top'), _('Bottom')], true);
+        addMarkedSlider('position-y', [_('Top'), _('Bottom')], true);
+
+        // Scale
+        addMarkedSlider('scale', [_('Small'), _('Large')]);
         //#endregion
 
         //#region Date Group

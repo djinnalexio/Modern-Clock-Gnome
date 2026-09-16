@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: modernclock@gnome-port\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 11:43+0100\n"
-"PO-Revision-Date: 2026-09-14 11:45+0100\n"
+"POT-Creation-Date: 2026-09-15 23:45+0100\n"
+"PO-Revision-Date: 2026-09-16 13:14+0100\n"
 "Last-Translator: Djinn Alexio <djinnalexio+gnome@proton.me>\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -19,8 +19,8 @@ msgstr ""
 "X-Generator: Gtranslator 50.0\n"
 
 #: src/prefs.js:31
-msgid "Position"
-msgstr "Position"
+msgid "Layout"
+msgstr "Disposition"
 
 #: src/prefs.js:66
 msgid "Left"
@@ -38,30 +38,38 @@ msgstr "Haut"
 msgid "Bottom"
 msgstr "Bas"
 
-#: src/prefs.js:73
+#: src/prefs.js:72
+msgid "Small"
+msgstr "Petit"
+
+#: src/prefs.js:72
+msgid "Large"
+msgstr "Grand"
+
+#: src/prefs.js:76
 msgid "Date"
 msgstr "Date"
 
-#: src/prefs.js:87
+#: src/prefs.js:90
 msgid "English Date"
 msgstr "Date en anglais"
 
-#: src/prefs.js:106 src/prefs.js:136 src/prefs.js:150
+#: src/prefs.js:109 src/prefs.js:139 src/prefs.js:153
 msgid "Format"
 msgstr "Format"
 
-#: src/prefs.js:118 src/prefs.js:161
+#: src/prefs.js:121 src/prefs.js:164
 msgid "Decoration"
 msgstr "Décoration"
 
-#: src/prefs.js:130
+#: src/prefs.js:133
 msgid "Time"
 msgstr "Heure"
 
-#: src/prefs.js:141 src/prefs.js:151
+#: src/prefs.js:144 src/prefs.js:154
 msgid "24-hour"
 msgstr "24 heures"
 
-#: src/prefs.js:142 src/prefs.js:151
+#: src/prefs.js:145 src/prefs.js:154
 msgid "AM / PM"
 msgstr "AM / PM"
