@@ -122,11 +122,11 @@ export default class ModernClockExtension extends Extension {
         }
 
         // Objects
-        this._logger = null;
+        this._wallClock = null;
         this._settings = null;
         this._destroyAllClocks();
         this._clockWidgets = [];
-        this._wallClock = null;
+        this._logger = null;
     }
     //#endregion
 
