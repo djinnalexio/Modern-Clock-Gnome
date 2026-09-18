@@ -135,7 +135,7 @@ export default class ModernClockPreferences extends ExtensionPreferences {
 
         // Time format
         let timeFormatRow;
-        if (shellVersion >= 47) {
+        if (shellVersion >= 48) {
             timeFormatRow = new Adw.ActionRow({ title: _('Format') });
             const timeFormatToggleGroup = new Adw.ToggleGroup({
                 valign: Gtk.Align.CENTER,
