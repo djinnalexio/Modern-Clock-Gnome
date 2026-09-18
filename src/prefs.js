@@ -143,19 +143,19 @@ export default class ModernClockPreferences extends ExtensionPreferences {
             });
             timeFormatToggleGroup.add(new Adw.Toggle({ label: _('24-hour'), name: '24h' }));
             timeFormatToggleGroup.add(new Adw.Toggle({ label: _('AM / PM'), name: 'ampm' }));
-            timeFormatToggleGroup.set_active(settings.get_enum('time-format'));
+            timeFormatToggleGroup.set_active(settings.get_boolean('use-24h') ? 0 : 1);
             timeFormatRow.add_suffix(timeFormatToggleGroup);
             timeFormatToggleGroup.connect('notify::active', () =>
-                settings.set_enum('time-format', timeFormatToggleGroup.get_active())
+                settings.set_boolean('use-24h', timeFormatToggleGroup.get_active() === 0)
             );
         } else {
             timeFormatRow = new Adw.ComboRow({
                 title: _('Format'),
                 model: Gtk.StringList.new([_('24-hour'), _('AM / PM')]),
-                selected: settings.get_enum('time-format'),
+                selected: settings.get_boolean('use-24h') ? 0 : 1,
             });
             timeFormatRow.connect('notify::selected', widget =>
-                settings.set_enum('time-format', widget.get_selected())
+                settings.set_boolean('use-24h', widget.get_selected() === 0)
             );
         }
         timeGroup.add(timeFormatRow);

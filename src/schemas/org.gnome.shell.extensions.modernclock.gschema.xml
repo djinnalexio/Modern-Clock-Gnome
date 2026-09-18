@@ -7,10 +7,6 @@
         <value value='1' nick='short' />
         <value value='2' nick='text' />
     </enum>
-    <enum id='org.gnome.shell.extensions.modernclock.time-format'>
-        <value value='0' nick='24h' />
-        <value value='1' nick='ampm' />
-    </enum>
     <schema id='org.gnome.shell.extensions.modernclock' path='/org/gnome/shell/extensions/modernclock/'>
         <key name='position-x' type='d'>
             <default>0.5</default>
@@ -45,10 +41,10 @@
             <summary>Date decoration</summary>
             <description>Characters around the date.</description>
         </key>
-        <key name='time-format' enum='org.gnome.shell.extensions.modernclock.time-format'>
-            <default>'ampm'</default>
-            <summary>Time format</summary>
-            <description>24-hour or AM/PM.</description>
+        <key name='use-24h'type='b'>
+            <default>false</default>
+            <summary>Use 24-hour format</summary>
+            <description>Use 24-hour time format instead of 12-hour AM/PM.</description>
         </key>
         <key name='time-deco' type='s'>
             <default>'-'</default>

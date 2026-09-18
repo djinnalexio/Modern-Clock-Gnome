@@ -236,7 +236,7 @@ export default class ModernClockExtension extends Extension {
             ? WEEKDAYS[now.get_day_of_week() - 1]
             : now.format('%A').toUpperCase();
         // Date
-        let date, time;
+        let date;
         switch (this._settings.get_string('date-format')) {
             case 'text':
                 date = useEnglish
@@ -254,19 +254,15 @@ export default class ModernClockExtension extends Extension {
                 break;
         }
         // Time
-        switch (this._settings.get_string('time-format')) {
-            case '24h':
-                time = `${now.format(`%H:%M`)}`;
-                break;
-            case 'ampm':
-            default: {
-                // Manually calculate AM/PM format because some locales don't support it
-                const hours = now.get_hour();
-                const h12 = hours % 12 || 12;
-                const ampm = hours < 12 ? 'AM' : 'PM';
-                time = `${now.format(`${h12.toString().padStart(2, '0')}:%M ${ampm}`)}`;
-                break;
-            }
+        let time;
+        if (this._settings.get_boolean('use-24h')) {
+            time = `${now.format(`%H:%M`)}`;
+        } else {
+            // Manually calculate AM/PM format because some locales don't support it
+            const hours = now.get_hour();
+            const h12 = hours % 12 || 12;
+            const ampm = hours < 12 ? 'AM' : 'PM';
+            time = `${now.format(`${h12.toString().padStart(2, '0')}:%M ${ampm}`)}`;
         }
 
         this._clockWidgets.forEach(clockWidget => {
