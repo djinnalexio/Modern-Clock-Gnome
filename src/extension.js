@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Modern Clock for GNOME Contributors
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
