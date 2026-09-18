@@ -238,7 +238,7 @@ export default class ModernClockExtension extends Extension {
         // Date
         let date;
         switch (this._settings.get_string('date-format')) {
-            case 'text':
+            case 'long':
                 date = useEnglish
                     ? now.format(`%d ${MONTHS[now.get_month() - 1]} %Y`)
                     : now.format('%d %B %Y').toUpperCase();
@@ -246,7 +246,7 @@ export default class ModernClockExtension extends Extension {
             case 'numeric':
                 date = now.format('%d.%m.%Y');
                 break;
-            case 'short':
+            case 'text':
             default:
                 date = useEnglish
                     ? now.format(`%d ${MONTHS_SHORT[now.get_month() - 1]} %Y`)

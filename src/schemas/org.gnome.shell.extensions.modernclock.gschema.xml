@@ -4,8 +4,8 @@
 <schemalist gettext-domain='modernclock@gnome-port'>
     <enum id='org.gnome.shell.extensions.modernclock.date-format'>
         <value value='0' nick='numeric' />
-        <value value='1' nick='short' />
-        <value value='2' nick='text' />
+        <value value='1' nick='text' />
+        <value value='2' nick='long' />
     </enum>
     <schema id='org.gnome.shell.extensions.modernclock' path='/org/gnome/shell/extensions/modernclock/'>
         <key name='position-x' type='d'>
@@ -32,9 +32,9 @@
             <description>Use English for the date instead of the system language.</description>
         </key>
         <key name='date-format' enum='org.gnome.shell.extensions.modernclock.date-format'>
-            <default>'short'</default>
+            <default>'text'</default>
             <summary>Date format</summary>
-            <description>numeric: '01.09.2026', short: '01 SEP 2026', text: '01 SEPTEMBER 2026'</description>
+            <description>numeric: '01.09.2026', text: '01 SEP 2026', long: '01 SEPTEMBER 2026'</description>
         </key>
         <key name='date-deco' type='s'>
             <default>''</default>
