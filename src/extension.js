@@ -312,7 +312,7 @@ export default class ModernClockExtension extends Extension {
         const x = Math.round(workArea.x + positionX * (workArea.width - width));
         const y = Math.round(workArea.y + positionY * (workArea.height - height));
 
-        clockWidget.set_position(x, y);
+        if (clockWidget.x !== x || clockWidget.y !== y) clockWidget.set_position(x, y);
     }
     //#endregion
 
