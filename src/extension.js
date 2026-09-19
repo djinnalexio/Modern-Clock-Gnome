@@ -41,6 +41,8 @@ const MONTHS = [
     'DECEMBER',
 ];
 const MONTHS_SHORT = MONTHS.map(m => m.slice(0, 3));
+// ── Font files ───────────────────────────────────────────────────────────────
+const FONT_FILES = ['Anurati.otf', 'Poppins.ttf'];
 //#endregion
 
 export default class ModernClockExtension extends Extension {
@@ -323,29 +325,18 @@ export default class ModernClockExtension extends Extension {
             GLib.build_filenamev([GLib.get_user_data_dir(), 'fonts', 'modernclock'])
         );
         if (this._fontsPresent(fontsDir)) return;
+        this._logger.log(`fonts missing, installing to ${fontsDir.get_path()} (takes effect next session)`);
 
-        let children = null;
         try {
-            if (!fontsDir.query_exists(null)) fontsDir.make_directory_with_parents(null);
             const srcDir = Gio.File.new_for_path(GLib.build_filenamev([this.path, 'fonts']));
-            children = srcDir.enumerate_children(
-                'standard::name,standard::type',
-                Gio.FileQueryInfoFlags.NONE,
-                null
-            );
-
-            let info;
-            while ((info = children.next_file(null)) !== null) {
-                const name = info.get_name();
-                const srcChild = srcDir.get_child(name);
-                const destChild = fontsDir.get_child(name);
-
+            if (!fontsDir.query_exists(null)) fontsDir.make_directory_with_parents(null);
+            FONT_FILES.forEach(fontName => {
+                const srcChild = srcDir.get_child(fontName);
+                const destChild = fontsDir.get_child(fontName);
                 srcChild.copy(destChild, Gio.FileCopyFlags.OVERWRITE, null, null);
-            }
+            });
         } catch (e) {
-            this._logger.warn('Failed to install fonts:', e);
-        } finally {
-            if (children) children.close(null);
+            this._logger.warn('failed to install fonts:', e);
         }
     }
     //#endregion
@@ -353,19 +344,10 @@ export default class ModernClockExtension extends Extension {
     //#region fontsPresent
     _fontsPresent(fontsDir) {
         if (!fontsDir.query_exists(null)) return false;
-
-        let children = null;
         try {
-            children = fontsDir.enumerate_children(
-                'standard::name',
-                Gio.FileQueryInfoFlags.NONE,
-                null
-            );
-            return children.next_file(null) !== null;
+            return FONT_FILES.every(fontName => fontsDir.get_child(fontName).query_exists(null));
         } catch {
             return false;
-        } finally {
-            if (children) children.close(null);
         }
     }
     //#endregion
