@@ -27,7 +27,7 @@
             <description>Overall size scale of the widget.</description>
         </key>
         <key name='use-english' type='b'>
-            <default>false</default>
+            <default>true</default>
             <summary>Use English</summary>
             <description>Use English for the date instead of the system language.</description>
         </key>
