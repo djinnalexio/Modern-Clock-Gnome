@@ -306,15 +306,13 @@ export default class ModernClockExtension extends Extension {
 
         const positionX = this._settings.get_double('position-x');
         const positionY = this._settings.get_double('position-y');
-        const [, preferredWidth] = clockWidget.get_preferred_width(-1);
-        const [, preferredHeight] = clockWidget.get_preferred_height(-1);
-        const width = Math.max(clockWidget.width, preferredWidth);
-        const height = Math.max(clockWidget.height, preferredHeight);
+        const [, width] = clockWidget.get_preferred_width(-1);
+        const [, height] = clockWidget.get_preferred_height(-1);
 
-        const x = workArea.x + positionX * (workArea.width - width);
-        const y = workArea.y + positionY * (workArea.height - height);
+        const x = Math.round(workArea.x + positionX * (workArea.width - width));
+        const y = Math.round(workArea.y + positionY * (workArea.height - height));
 
-        clockWidget.set_position(Math.round(x), Math.round(y));
+        clockWidget.set_position(x, y);
     }
     //#endregion
 
@@ -324,8 +322,10 @@ export default class ModernClockExtension extends Extension {
             GLib.build_filenamev([GLib.get_user_data_dir(), 'fonts', 'modernclock'])
         );
         if (this._fontsPresent(fontsDir)) return;
-        this._logger.log(`fonts missing, installing to ${fontsDir.get_path()} (takes effect next session)`);
 
+        this._logger.log(
+            `fonts missing, installing at ${fontsDir.get_path()} (takes effect next session)`
+        );
         try {
             const srcDir = Gio.File.new_for_path(GLib.build_filenamev([this.path, 'fonts']));
             if (!fontsDir.query_exists(null)) fontsDir.make_directory_with_parents(null);
