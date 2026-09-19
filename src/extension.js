@@ -93,6 +93,11 @@ export default class ModernClockExtension extends Extension {
             this._buildAllClocks();
         });
 
+        // ── Connect to work areas changes ────────────────────────────────────
+        this._workareasChangedId = global.display.connect('workareas-changed', () =>
+            this._clockWidgets.forEach(clockWidget => this._positionClock(clockWidget))
+        );
+
         // ── Connect to GNOME Clock ───────────────────────────────────────────
         this._wallClock = new GnomeDesktop.WallClock();
         this._lastMinute = null;
@@ -116,6 +121,10 @@ export default class ModernClockExtension extends Extension {
         if (this._clockChangedId) {
             this._wallClock.disconnect(this._clockChangedId);
             this._clockChangedId = null;
+        }
+        if (this._workareasChangedId) {
+            global.display.disconnect(this._workareasChangedId);
+            this._workareasChangedId = null;
         }
         if (this._monitorsChangedId) {
             Main.layoutManager.disconnect(this._monitorsChangedId);
