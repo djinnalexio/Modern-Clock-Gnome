@@ -13,7 +13,7 @@ import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 //#region Constants
-// ── Базовые размеры (для 1080p) ──────────────────────────────────────────────
+// ── Base dimensions for 1080p ────────────────────────────────────────────────
 const BASE_HEIGHT = 1080;
 const BASE_WEEKDAY_SIZE = 88;
 const BASE_WEEKDAY_LS = 20;
@@ -54,9 +54,15 @@ export default class ModernClockExtension extends Extension {
 
         // ── Connect to settings ──────────────────────────────────────────────
         this._settings = this.getSettings();
-        this._settingsChangedId = this._settings.connect('changed', () => this._updateAllClocks());
+        this._settingsChangedId = this._settings.connect('changed', (s, key) => {
+            this._clockWidgets.forEach(clockWidget => {
+                this._updateClockDisplay(clockWidget);
+                if (key === 'scale') this._scaleClock(clockWidget);
+                this._positionClock(clockWidget);
+            });
+        });
 
-        // ── Автоустановка шрифтов ────────────────────────────────────────────
+        // ── Install fonts ────────────────────────────────────────────────────
         this._installFonts();
 
         // ── Build clocks when the layout is ready ────────────────────────────
@@ -81,10 +87,10 @@ export default class ModernClockExtension extends Extension {
             const snapshot = Main.layoutManager.monitors
                 .map(m => `${m.index}:${m.x},${m.y},${m.width}x${m.height}`)
                 .join('|');
-            if (this._lastMonitorSnapshot !== snapshot) {
-                this._lastMonitorSnapshot = snapshot;
-                this._buildAllClocks();
-            }
+            if (this._lastMonitorSnapshot === snapshot) return;
+
+            this._lastMonitorSnapshot = snapshot;
+            this._buildAllClocks();
         });
 
         // ── Connect to GNOME Clock ───────────────────────────────────────────
@@ -93,10 +99,13 @@ export default class ModernClockExtension extends Extension {
         this._clockChangedId = this._wallClock.connect('notify::clock', () => {
             const now = GLib.DateTime.new_now_local();
             const minute = now.get_hour() * 60 + now.get_minute();
-            if (this._lastMinute !== minute) {
-                this._lastMinute = minute;
-                this._updateAllClocks();
-            }
+            if (this._lastMinute === minute) return;
+
+            this._lastMinute = minute;
+            this._clockWidgets.forEach(clockWidget => {
+                this._updateClockDisplay(clockWidget);
+                this._positionClock(clockWidget);
+            });
         });
     }
     //#endregion
@@ -104,21 +113,21 @@ export default class ModernClockExtension extends Extension {
     //#region disable
     disable() {
         // Signals
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
-        }
-        if (this._startupCompleteId) {
-            Main.layoutManager.disconnect(this._startupCompleteId);
-            this._startupCompleteId = null;
+        if (this._clockChangedId) {
+            this._wallClock.disconnect(this._clockChangedId);
+            this._clockChangedId = null;
         }
         if (this._monitorsChangedId) {
             Main.layoutManager.disconnect(this._monitorsChangedId);
             this._monitorsChangedId = null;
         }
-        if (this._clockChangedId) {
-            this._wallClock.disconnect(this._clockChangedId);
-            this._clockChangedId = null;
+        if (this._startupCompleteId) {
+            Main.layoutManager.disconnect(this._startupCompleteId);
+            this._startupCompleteId = null;
+        }
+        if (this._settingsChangedId) {
+            this._settings.disconnect(this._settingsChangedId);
+            this._settingsChangedId = null;
         }
 
         // Objects
@@ -139,43 +148,25 @@ export default class ModernClockExtension extends Extension {
         this._clockWidgets = [];
 
         const monitors = Main.layoutManager.monitors;
-        monitors.forEach(monitor => {
-            const widget = this._buildClockWidget(monitor);
-            if (widget) this._clockWidgets.push(widget);
-        });
-
-        this._clockWidgets.forEach(clockWidget =>
-            Main.layoutManager._backgroundGroup.add_child(clockWidget)
-        );
-
-        this._updateAllClocks();
-        this._clockWidgets.forEach(clockWidget => clockWidget.set_opacity(255));
+        this._clockWidgets = monitors.map(monitor => this._buildClock(monitor));
     }
     //#endregion
 
     //#region destroyAllClocks
     _destroyAllClocks() {
-        if (!this._clockWidgets || this._clockWidgets.length === 0) return;
-
         this._clockWidgets.forEach(clockWidget => {
-            // Disconnect reposition signal
             if (clockWidget.allocationNotifyId) {
                 clockWidget.disconnect(clockWidget.allocationNotifyId);
                 clockWidget.allocationNotifyId = null;
-            }
-            // Remove from layoutManager
-            try {
-                if (clockWidget.get_parent()) clockWidget.get_parent().remove_child(clockWidget);
-            } catch (e) {
-                this._logger.warn('Failed to remove widget:', e);
             }
             clockWidget.destroy();
         });
     }
     //#endregion
 
-    //#region buildClockWidget
-    _buildClockWidget(monitor) {
+    //#region buildClock
+    _buildClock(monitor) {
+        // Build widget
         const container = new St.BoxLayout({
             name: `ModernClockWidget-${monitor.index}`,
             style_class: 'modernclock-container',
@@ -184,23 +175,14 @@ export default class ModernClockExtension extends Extension {
             track_hover: false,
             opacity: 0, // keep it hidden until ready
         });
+        container.monitor = monitor;
         if (this._shellVersion >= 48) container.set_orientation(Clutter.Orientation.VERTICAL);
         else container.set_vertical(true);
 
-        const styles = this._buildStyles(monitor);
-        container.weekdayLabel = new St.Label({
-            style: styles.day,
-            style_class: 'modernclock-day',
-        });
-        container.dateLabel = new St.Label({
-            style: styles.date,
-            style_class: 'modernclock-date',
-        });
-        container.timeLabel = new St.Label({
-            style: styles.time,
-            style_class: 'modernclock-time',
-        });
-        container.monitor = monitor;
+        // Build labels
+        container.weekdayLabel = new St.Label({ style_class: 'modernclock-day' });
+        container.dateLabel = new St.Label({ style_class: 'modernclock-date' });
+        container.timeLabel = new St.Label({ style_class: 'modernclock-time' });
 
         [container.weekdayLabel, container.dateLabel, container.timeLabel].forEach(label => {
             label.set_x_align(Clutter.ActorAlign.CENTER);
@@ -209,23 +191,29 @@ export default class ModernClockExtension extends Extension {
             container.add_child(label);
         });
 
-        container.allocationNotifyId = container.connect('notify::allocation', () =>
-            this._rescaleClockWidget(container)
-        );
+        // Connect to allocation signal
+        container.allocationNotifyId = container.connect('notify::allocation', () => {
+            this._scaleClock(container);
+            this._positionClock(container);
+        });
+
+        // Add to layout
+        Main.layoutManager._backgroundGroup.add_child(container);
+
+        // Setup widget
+        this._updateClockDisplay(container);
+        this._scaleClock(container);
+        this._positionClock(container);
+
+        // Reveal
+        container.set_opacity(255);
 
         return container;
     }
     //#endregion
 
-    //#region updateAllClocks
-    _updateAllClocks() {
-        if (!this._ready) return;
-
-        if (!this._clockWidgets || this._clockWidgets.length === 0) {
-            this._logger.warn('There is no clock to update!');
-            return;
-        }
-
+    //#region updateClockDisplay
+    _updateClockDisplay(clockWidget) {
         const now = GLib.DateTime.new_now_local();
         const useEnglish = this._settings.get_boolean('use-english');
         const dateDeco = this._settings.get_string('date-deco');
@@ -265,26 +253,24 @@ export default class ModernClockExtension extends Extension {
             time = `${now.format(`${h12.toString().padStart(2, '0')}:%M ${ampm}`)}`;
         }
 
-        this._clockWidgets.forEach(clockWidget => {
-            clockWidget.weekdayLabel.set_text(weekday);
-            clockWidget.dateLabel.set_text(`${dateDeco} ${date} ${dateDeco}`);
-            clockWidget.timeLabel.set_text(`${timeDeco} ${time} ${timeDeco}`);
-            this._rescaleClockWidget(clockWidget);
-        });
+        clockWidget.weekdayLabel.set_text(weekday);
+        clockWidget.dateLabel.set_text(`${dateDeco} ${date} ${dateDeco}`);
+        clockWidget.timeLabel.set_text(`${timeDeco} ${time} ${timeDeco}`);
     }
     //#endregion
 
-    //#region buildStyles
-    _buildStyles(monitor) {
-        // Масштаб относительно 1080p
-        const referenceDimension = Math.min(monitor.width, monitor.height);
+    //#region scaleClock
+    _scaleClock(clockWidget) {
+        // Update the monitor
+        clockWidget.monitor = Main.layoutManager.monitors[clockWidget.monitor.index];
+
+        const referenceDimension = Math.min(clockWidget.monitor.width, clockWidget.monitor.height);
         const monitorScale = referenceDimension / BASE_HEIGHT;
-        const rawScale = this._settings.get_double('scale');
-        // convert 0-1 to MIN_SCALE-MAX_SCALE
+        const userScale = this._settings.get_double('scale');
         const sizeScale =
-            rawScale < 0.5
-                ? MIN_SCALE + (NEUTRAL_SCALE - MIN_SCALE) * (rawScale / 0.5)
-                : NEUTRAL_SCALE + (MAX_SCALE - NEUTRAL_SCALE) * ((rawScale - 0.5) / 0.5);
+            userScale < 0.5
+                ? MIN_SCALE + (NEUTRAL_SCALE - MIN_SCALE) * (userScale / 0.5)
+                : NEUTRAL_SCALE + (MAX_SCALE - NEUTRAL_SCALE) * ((userScale - 0.5) / 0.5);
 
         const weekdaySize = Math.round(BASE_WEEKDAY_SIZE * monitorScale * sizeScale);
         const weekdayLS = Math.round(BASE_WEEKDAY_LS * monitorScale * sizeScale);
@@ -293,18 +279,19 @@ export default class ModernClockExtension extends Extension {
         const padTopDate = Math.round(BASE_DATE_TOP_PAD * monitorScale * sizeScale);
         const padTopTime = Math.round(BASE_TIME_TOP_PAD * monitorScale * sizeScale);
 
-        return {
-            day: `font-size: ${weekdaySize}px; letter-spacing: ${weekdayLS}px;`,
+        const style = {
+            weekday: `font-size: ${weekdaySize}px; letter-spacing: ${weekdayLS}px;`,
             date: `font-size: ${subSize}px; letter-spacing: ${subLS}px; padding-top: ${padTopDate}px;`,
             time: `font-size: ${subSize}px; letter-spacing: ${subLS}px; padding-top: ${padTopTime}px;`,
         };
+        clockWidget.weekdayLabel.set_style(style.weekday);
+        clockWidget.dateLabel.set_style(style.date);
+        clockWidget.timeLabel.set_style(style.time);
     }
     //#endregion
 
-    //#region repositionClock
-    _repositionClockWidget(clockWidget) {
-        if (!clockWidget.monitor) return;
-
+    //#region positionClock
+    _positionClock(clockWidget) {
         const workArea = Main.layoutManager.getWorkAreaForMonitor(clockWidget.monitor.index);
 
         const positionX = this._settings.get_double('position-x');
@@ -318,20 +305,6 @@ export default class ModernClockExtension extends Extension {
         const y = workArea.y + positionY * (workArea.height - height);
 
         clockWidget.set_position(Math.round(x), Math.round(y));
-    }
-    //#endregion
-
-    //#region rescaleClockWidget
-    _rescaleClockWidget(clockWidget) {
-        const monitor = Main.layoutManager.monitors[clockWidget.monitor.index];
-        if (!monitor) return;
-
-        const styles = this._buildStyles(monitor);
-        clockWidget.weekdayLabel.set_style(styles.day);
-        clockWidget.dateLabel.set_style(styles.date);
-        clockWidget.timeLabel.set_style(styles.time);
-        clockWidget.monitor = monitor;
-        this._repositionClockWidget(clockWidget);
     }
     //#endregion
 
