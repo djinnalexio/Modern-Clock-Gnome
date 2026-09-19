@@ -203,10 +203,9 @@ export default class ModernClockExtension extends Extension {
         });
 
         // Connect to allocation signal
-        container.allocationNotifyId = container.connect('notify::allocation', () => {
-            this._scaleClock(container);
-            this._positionClock(container);
-        });
+        container.allocationNotifyId = container.connect('notify::allocation', () =>
+            this._positionClock(container)
+        );
 
         // Add to layout
         Main.layoutManager._backgroundGroup.add_child(container);
