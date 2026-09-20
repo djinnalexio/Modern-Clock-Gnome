@@ -21,9 +21,9 @@ const BASE_SUB_SIZE = 24;
 const BASE_SUB_LS = 4;
 const BASE_DATE_TOP_PAD = 8;
 const BASE_TIME_TOP_PAD = 4;
-const MIN_SCALE = 0.5;
-const NEUTRAL_SCALE = 1.0;
-const MAX_SCALE = 2.0;
+const USER_SCALE_MIN = 0.5;
+const USER_SCALE_NEUTRAL = 1.0;
+const USER_SCALE_MAX = 2.0;
 // ── English weekdays and months ──────────────────────────────────────────────
 const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const MONTHS = [
@@ -267,27 +267,27 @@ export default class ModernClockExtension extends Extension {
     //#region scaleClock
     _scaleClock(clockWidget) {
         // Update the monitor
-        clockWidget.monitor = Main.layoutManager.monitors[clockWidget.monitor.index];
+        const monitor = Main.layoutManager.monitors[clockWidget.monitor.index];
+        if (!monitor) return;
+        clockWidget.monitor = monitor;
 
         const referenceDimension = Math.min(clockWidget.monitor.width, clockWidget.monitor.height);
         const monitorScale = referenceDimension / BASE_HEIGHT;
-        const userScale = this._settings.get_double('scale');
-        const sizeScale =
-            userScale < 0.5
-                ? MIN_SCALE + (NEUTRAL_SCALE - MIN_SCALE) * (userScale / 0.5)
-                : NEUTRAL_SCALE + (MAX_SCALE - NEUTRAL_SCALE) * ((userScale - 0.5) / 0.5);
-
-        const weekdaySize = Math.round(BASE_WEEKDAY_SIZE * monitorScale * sizeScale);
-        const weekdayLS = Math.round(BASE_WEEKDAY_LS * monitorScale * sizeScale);
-        const subSize = Math.round(BASE_SUB_SIZE * monitorScale * sizeScale);
-        const subLS = Math.round(BASE_SUB_LS * monitorScale * sizeScale);
-        const padTopDate = Math.round(BASE_DATE_TOP_PAD * monitorScale * sizeScale);
-        const padTopTime = Math.round(BASE_TIME_TOP_PAD * monitorScale * sizeScale);
+        const sliderValue = this._settings.get_double('scale');
+        const UserScale =
+            sliderValue < 0.5
+                ? USER_SCALE_MIN + (USER_SCALE_NEUTRAL - USER_SCALE_MIN) * (sliderValue / 0.5)
+                : USER_SCALE_NEUTRAL +
+                  (USER_SCALE_MAX - USER_SCALE_NEUTRAL) * ((sliderValue - 0.5) / 0.5);
+        const scale = monitorScale * UserScale;
+        function px(base) {
+            return Math.round(base * scale);
+        }
 
         const style = {
-            weekday: `font-size: ${weekdaySize}px; letter-spacing: ${weekdayLS}px;`,
-            date: `font-size: ${subSize}px; letter-spacing: ${subLS}px; padding-top: ${padTopDate}px;`,
-            time: `font-size: ${subSize}px; letter-spacing: ${subLS}px; padding-top: ${padTopTime}px;`,
+            weekday: `font-size: ${px(BASE_WEEKDAY_SIZE)}px; letter-spacing: ${px(BASE_WEEKDAY_LS)}px;`,
+            date: `font-size: ${px(BASE_SUB_SIZE)}px; letter-spacing: ${px(BASE_SUB_LS)}px; padding-top: ${px(BASE_DATE_TOP_PAD)}px;`,
+            time: `font-size: ${px(BASE_SUB_SIZE)}px; letter-spacing: ${px(BASE_SUB_LS)}px; padding-top: ${px(BASE_TIME_TOP_PAD)}px;`,
         };
         clockWidget.weekdayLabel.set_style(style.weekday);
         clockWidget.dateLabel.set_style(style.date);
