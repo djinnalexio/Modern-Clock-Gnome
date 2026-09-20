@@ -73,10 +73,10 @@ export default class ModernClockExtension extends Extension {
 
         if (Main.layoutManager._startingUp) {
             this._startupCompleteId = Main.layoutManager.connect('startup-complete', () => {
-                this._ready = true;
-                this._buildAllClocks();
                 Main.layoutManager.disconnect(this._startupCompleteId);
                 this._startupCompleteId = null;
+                this._ready = true;
+                this._buildAllClocks();
             });
         } else {
             this._ready = true;
