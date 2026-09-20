@@ -5,6 +5,7 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
+import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
@@ -60,7 +61,7 @@ export default class ModernClockExtension extends Extension {
             this._clockWidgets.forEach(clockWidget => {
                 this._updateClockDisplay(clockWidget);
                 if (key === 'scale') this._scaleClock(clockWidget);
-                this._positionClock(clockWidget);
+                this._queuePositionClock(clockWidget);
             });
         });
 
@@ -91,7 +92,7 @@ export default class ModernClockExtension extends Extension {
 
         // ── Connect to work areas changes ────────────────────────────────────
         this._workareasChangedId = global.display.connect('workareas-changed', () =>
-            this._clockWidgets.forEach(clockWidget => this._positionClock(clockWidget))
+            this._clockWidgets.forEach(clockWidget => this._queuePositionClock(clockWidget))
         );
 
         // ── Connect to GNOME Clock ───────────────────────────────────────────
@@ -105,7 +106,7 @@ export default class ModernClockExtension extends Extension {
             this._lastMinute = minute;
             this._clockWidgets.forEach(clockWidget => {
                 this._updateClockDisplay(clockWidget);
-                this._positionClock(clockWidget);
+                this._queuePositionClock(clockWidget);
             });
         });
     }
@@ -161,6 +162,10 @@ export default class ModernClockExtension extends Extension {
     //#region destroyAllClocks
     _destroyAllClocks() {
         this._clockWidgets.forEach(clockWidget => {
+            if (clockWidget.positionLaterId) {
+                global.compositor.get_laters().remove(clockWidget.positionLaterId);
+                clockWidget.positionLaterId = null;
+            }
             if (clockWidget.allocationNotifyId) {
                 clockWidget.disconnect(clockWidget.allocationNotifyId);
                 clockWidget.allocationNotifyId = null;
@@ -179,9 +184,9 @@ export default class ModernClockExtension extends Extension {
             can_focus: false,
             reactive: false,
             track_hover: false,
-            opacity: 0, // keep it hidden until ready
         });
         container.monitor = monitor;
+        container.positionLaterId = null;
         if (this._shellVersion >= 48) container.set_orientation(Clutter.Orientation.VERTICAL);
         else container.set_vertical(true);
 
@@ -197,21 +202,18 @@ export default class ModernClockExtension extends Extension {
             container.add_child(label);
         });
 
-        // Connect to allocation signal
-        container.allocationNotifyId = container.connect('notify::allocation', () =>
-            this._positionClock(container)
-        );
-
         // Add to layout
         Main.layoutManager._backgroundGroup.add_child(container);
+
+        // Connect to allocation signal (to cover edge cases not covered by the other signals)
+        container.allocationNotifyId = container.connect('notify::allocation', () =>
+            this._queuePositionClock(container)
+        );
 
         // Setup widget
         this._updateClockDisplay(container);
         this._scaleClock(container);
-        this._positionClock(container);
-
-        // Reveal
-        container.set_opacity(255);
+        this._queuePositionClock(container);
 
         return container;
     }
@@ -310,6 +312,21 @@ export default class ModernClockExtension extends Extension {
         if (clockWidget.x !== x || clockWidget.y !== y) clockWidget.set_position(x, y);
     }
     //#endregion
+
+    //#region queuePositionClock
+    _queuePositionClock(clockWidget) {
+        if (clockWidget.positionLaterId) return;
+
+        clockWidget.positionLaterId = global.compositor
+            .get_laters()
+            .add(Meta.LaterType.BEFORE_REDRAW, () => {
+                clockWidget.positionLaterId = null;
+                this._positionClock(clockWidget);
+                return GLib.SOURCE_REMOVE;
+            });
+    }
+    //#endregion
+
     //#region snapshotMonitor
     _snapshotMonitor() {
         return Main.layoutManager.monitors
