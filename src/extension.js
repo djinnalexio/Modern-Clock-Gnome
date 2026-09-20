@@ -70,6 +70,7 @@ export default class ModernClockExtension extends Extension {
         // ── Build clocks when the layout is ready ────────────────────────────
         this._clockWidgets = [];
         this._ready = false;
+        this._lastMonitorSnapshot = null;
 
         if (Main.layoutManager._startingUp) {
             this._startupCompleteId = Main.layoutManager.connect('startup-complete', () => {
@@ -84,15 +85,8 @@ export default class ModernClockExtension extends Extension {
         }
 
         // ── Connect to monitor changes ───────────────────────────────────────
-        this._lastMonitorSnapshot = null;
         this._monitorsChangedId = Main.layoutManager.connect('monitors-changed', () => {
-            const snapshot = Main.layoutManager.monitors
-                .map(m => `${m.index}:${m.x},${m.y},${m.width}x${m.height}`)
-                .join('|');
-            if (this._lastMonitorSnapshot === snapshot) return;
-
-            this._lastMonitorSnapshot = snapshot;
-            this._buildAllClocks();
+            if (this._lastMonitorSnapshot !== this._snapshotMonitor()) this._buildAllClocks();
         });
 
         // ── Connect to work areas changes ────────────────────────────────────
@@ -159,6 +153,7 @@ export default class ModernClockExtension extends Extension {
         this._clockWidgets = [];
 
         const monitors = Main.layoutManager.monitors;
+        this._lastMonitorSnapshot = this._snapshotMonitor();
         this._clockWidgets = monitors.map(monitor => this._buildClock(monitor));
     }
     //#endregion
@@ -313,6 +308,13 @@ export default class ModernClockExtension extends Extension {
         const y = Math.round(workArea.y + positionY * (workArea.height - height));
 
         if (clockWidget.x !== x || clockWidget.y !== y) clockWidget.set_position(x, y);
+    }
+    //#endregion
+    //#region snapshotMonitor
+    _snapshotMonitor() {
+        return Main.layoutManager.monitors
+            .map(m => `${m.index}:${m.x},${m.y},${m.width}x${m.height}`)
+            .join('|');
     }
     //#endregion
 
