@@ -2,6 +2,11 @@
 <!-- SPDX-FileCopyrightText: 2026 Modern Clock for GNOME Contributors -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <schemalist gettext-domain='modernclock@gnome-port'>
+    <enum id='org.gnome.shell.extensions.modernclock.language-mode'>
+        <value value='0' nick='system' />
+        <value value='1' nick='auto' />
+        <value value='2' nick='english' />
+    </enum>
     <enum id='org.gnome.shell.extensions.modernclock.date-format'>
         <value value='0' nick='numeric' />
         <value value='1' nick='text' />
@@ -23,13 +28,16 @@
         <key name='scale' type='d'>
             <default>0.5</default>
             <range min='0' max='1'/>
-            <summary>Widget size</summary>
+            <summary>Size</summary>
             <description>Overall size scale of the widget.</description>
         </key>
-        <key name='use-english' type='b'>
-            <default>true</default>
-            <summary>Use English</summary>
-            <description>Use English for the date instead of the system language.</description>
+        <key name='language-mode' enum='org.gnome.shell.extensions.modernclock.language-mode'>
+            <default>'auto'</default>
+            <summary>Language to use for the widget</summary>
+            <description>
+                'system': use LC_TIME, 'auto': use LC_TIME unless the weekday font cannot display
+                every weekday, in which case fallback to English. 'english': use English.
+            </description>
         </key>
         <key name='date-format' enum='org.gnome.shell.extensions.modernclock.date-format'>
             <default>'text'</default>

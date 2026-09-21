@@ -25,7 +25,8 @@ const BASE_TIME_TOP_PAD = 4;
 const USER_SCALE_MIN = 0.5;
 const USER_SCALE_NEUTRAL = 1.0;
 const USER_SCALE_MAX = 2.0;
-// ── English weekdays and months ──────────────────────────────────────────────
+// ── English ──────────────────────────────────────────────────────────────────
+const ANURATI_GLYPHS = /^[A-Z ]+$/;
 const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const MONTHS = [
     'JANUARY',
@@ -67,6 +68,12 @@ export default class ModernClockExtension extends Extension {
 
         // ── Install fonts ────────────────────────────────────────────────────
         this._installFonts();
+
+        // ── Check if Anurati can render the weekdays (only ships A–Z) ────────
+        const weekdays = [1, 2, 3, 4, 5, 6, 7]
+            .map(d => GLib.DateTime.new_local(2024, 1, d, 0, 0, 0).format('%A').toUpperCase())
+            .join('');
+        this._anuratiCoversLocale = ANURATI_GLYPHS.test(weekdays);
 
         // ── Build clocks when the layout is ready ────────────────────────────
         this._clockWidgets = [];
@@ -222,9 +229,11 @@ export default class ModernClockExtension extends Extension {
     //#region updateClockDisplay
     _updateClockDisplay(clockWidget) {
         const now = GLib.DateTime.new_now_local();
-        const useEnglish = this._settings.get_boolean('use-english');
         const dateDeco = this._settings.get_string('date-deco');
         const timeDeco = this._settings.get_string('time-deco');
+
+        const mode = this._settings.get_string('language-mode');
+        const useEnglish = mode === 'english' || (mode === 'auto' && !this._anuratiCoversLocale);
 
         // Weekday
         const weekday = useEnglish
@@ -280,7 +289,7 @@ export default class ModernClockExtension extends Extension {
             sliderValue < 0.5
                 ? USER_SCALE_MIN + (USER_SCALE_NEUTRAL - USER_SCALE_MIN) * (sliderValue / 0.5)
                 : USER_SCALE_NEUTRAL +
-                  (USER_SCALE_MAX - USER_SCALE_NEUTRAL) * ((sliderValue - 0.5) / 0.5);
+                (USER_SCALE_MAX - USER_SCALE_NEUTRAL) * ((sliderValue - 0.5) / 0.5);
         const scale = monitorScale * UserScale;
         function px(base) {
             return Math.round(base * scale);
