@@ -58,6 +58,14 @@ export default class ModernClockExtension extends Extension {
 
         // ── Connect to settings ──────────────────────────────────────────────
         this._settings = this.getSettings();
+
+        // Setting migration from boolean 'use-24h' to enum 'time-format'
+        const legacy24h = this._settings.get_user_value('use-24h');
+        if (legacy24h !== null) {
+            this._settings.set_string('time-format', legacy24h.get_boolean() ? '24h' : 'ampm');
+            this._settings.reset('use-24h');
+        }
+
         this._settingsChangedId = this._settings.connect('changed', (s, key) => {
             this._clockWidgets.forEach(clockWidget => {
                 this._updateClockDisplay(clockWidget);
@@ -259,7 +267,7 @@ export default class ModernClockExtension extends Extension {
         }
         // Time
         let time;
-        if (this._settings.get_boolean('use-24h')) {
+        if (this._settings.get_string('time-format') === '24h') {
             time = `${now.format(`%H:%M`)}`;
         } else {
             // Manually calculate AM/PM format because some locales don't support it
