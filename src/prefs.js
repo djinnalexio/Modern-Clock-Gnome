@@ -12,6 +12,8 @@ import {
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import * as Config from 'resource:///org/gnome/Shell/Extensions/js/misc/config.js';
 
+import { createAboutRow } from './prefsModules/about.js';
+
 export default class ModernClockPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -33,6 +35,14 @@ export default class ModernClockPreferences extends ExtensionPreferences {
         window.default_width = 400;
         window.default_height = 660;
         window.add(page);
+
+        //#region About
+        const aboutGroup = new Adw.PreferencesGroup({ title: _('Information') });
+        page.add(aboutGroup);
+
+        const aboutRow = new createAboutRow(this.metadata);
+        aboutGroup.add(aboutRow);
+        //#endregion
 
         //#region Layout Group
         const layoutGroup = new Adw.PreferencesGroup({ title: _('Layout') });
