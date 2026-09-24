@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Adw from 'gi://Adw';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
@@ -48,9 +49,21 @@ export function createMainPage(settings, metadata, shellVersion, { pageTitle, pa
     layoutGroup.add(verticalAxisRow);
     //#endregion
 
+    //#region Find format language
+    const systemLocaleSettings = new Gio.Settings({ schema_id: 'org.gnome.system.locale' });
+    function getLcTimeLanguage() {
+        let lcTime;
+        // Explicit "Formats" override
+        const regionOverride = systemLocaleSettings.get_string('region');
+        if (regionOverride !== '') lcTime = regionOverride;
+        else lcTime = GLib.get_language_names_with_category('LC_TIME')[0]; // Process
+        return lcTime.split(/[_.@]/)[0];
+    }
+    //#endregion
+
     //#region Language
     // only relevant if the time format language isn't already in English
-    const lcTimeLang = GLib.get_language_names_with_category('LC_TIME')[0].split(/[_.@]/)[0];
+    const lcTimeLang = getLcTimeLanguage();
     const isLcTimeEnglish = ['en', 'C', 'POSIX'].includes(lcTimeLang);
     if (!isLcTimeEnglish) {
         const langGroup = new Adw.PreferencesGroup({ title: _('Language') });
