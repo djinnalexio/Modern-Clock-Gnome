@@ -15,8 +15,8 @@ FONTS_DIR = $(XDG_DATA_HOME)/fonts/modernclock
 .DEFAULT_GOAL := pack
 
 pack:
-	gnome-extensions pack ./src --extra-source=fonts --extra-source="prefsModules"  \
-	--extra-source="../LICENSE"  --force
+	gnome-extensions pack ./src --extra-source="../LICENSE" --extra-source=assets \
+	--extra-source=fonts --extra-source=lib --extra-source="prefsModules" --force
 	mkdir -p dist
 	mv -f $(UUID).shell-extension.zip dist/
 	@echo "✓ Archive: dist/$(UUID).shell-extension.zip"
@@ -74,6 +74,6 @@ lint: $(NODE_MODULES_STAMP)
 	@echo ""
 
 pot:
-	xgettext --from-code=UTF-8 --output=src/po/$(UUID).pot src/*.js
+	xgettext --from-code=UTF-8 --output=src/po/$(UUID).pot src/*.js src/**/*.js
 	@echo "✓ Updated '$(UUID).pot' file for translations."
 	@echo ""

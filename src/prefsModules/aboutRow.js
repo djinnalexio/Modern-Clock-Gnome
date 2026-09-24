@@ -1,7 +1,7 @@
+// SPDX-FileCopyrightText: 2024-2026 Djinn Alexio
 // SPDX-FileCopyrightText: 2026 Modern Clock for GNOME Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//#region Imports
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
@@ -9,7 +9,6 @@ import {
     gettext as _,
     pgettext,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
-//#endregion
 
 //#region Credits
 // Feel free to add your name and url in the relevant section below if you have contributed.
@@ -24,9 +23,10 @@ const developers = [
 ];
 const documenters = [];
 
-const extensionIcon = '';
 const copyright = '© 2026 Modern Clock for GNOME Contributors';
 const developerName = 'Modern Clock for GNOME Contributors';
+const extensionIcon = '';
+const extensionPageUrl = 'https://extensions.gnome.org/extension/9882/modern-clock/';
 const issueUrl = 'https://github.com/Tony-Rain/Modern-Clock-Gnome/issues';
 const licenseType = Gtk.License.GPL_3_0;
 // The string for `release_notes` supports paragraphs <p>, emphasis (italics) <em>, code <code>,
@@ -35,10 +35,10 @@ const releaseNotes = ``;
 const supportUrl = '';
 //#endregion
 
-//#region About row
 /**
  * Creates a row that opens an AboutDialog window with information about the extension.
  * @param {ExtensionMetadata} metadata - The metadata object from metadata.json.
+ * @returns {Adw.ActionRow} The activatable row that opens the AboutDialog.
  */
 export function createAboutRow(metadata) {
     const row = new Adw.ActionRow({
@@ -49,35 +49,33 @@ export function createAboutRow(metadata) {
     row.add_suffix(new Gtk.Image({ icon_name: 'go-next-symbolic' }));
 
     //#region About dialog
-    const aboutWindow = new Adw.AboutDialog({
-        application_icon: extensionIcon,
-        application_name: metadata.name,
-        artists,
-        comments: metadata.description,
-        copyright,
-        designers,
-        developer_name: developerName,
-        developers,
-        documenters,
-        issue_url: issueUrl,
-        license_type: licenseType,
-        release_notes: releaseNotes,
-        release_notes_version: metadata['version-name'],
-        support_url: supportUrl,
-        translator_credits: pgettext('(USER)NAME EMAIL', 'translator_credits'),
-        version: metadata['version-name'],
-        website: metadata.url,
+    row.connect('activated', () => {
+        const version = metadata['version-name'] ?? '';
+        const aboutWindow = new Adw.AboutDialog({
+            application_icon: extensionIcon,
+            application_name: metadata.name,
+            artists,
+            comments: metadata.description,
+            copyright,
+            designers,
+            developer_name: developerName,
+            developers,
+            documenters,
+            issue_url: issueUrl,
+            license_type: licenseType,
+            release_notes: releaseNotes,
+            release_notes_version: version,
+            support_url: supportUrl,
+            translator_credits: pgettext('(USER)NAME EMAIL', 'translator_credits'),
+            version: version,
+            website: metadata.url,
+        });
+        aboutWindow.add_link(_('Extension Page'), extensionPageUrl);
+        aboutWindow.add_acknowledgement_section(_('Based on'), [
+            'Modern Clock for KDE https://github.com/Prayag2/kde_modernclock',
+        ]);
+        aboutWindow.present(row);
     });
-    aboutWindow.add_link(
-        _('Extension Page'),
-        'https://extensions.gnome.org/extension/9882/modern-clock/'
-    );
-    aboutWindow.add_acknowledgement_section(_('Port of'), [
-        'Modern Clock for KDE https://github.com/Prayag2/kde_modernclock',
-    ]);
     //#endregion
-
-    row.connect('activated', () => aboutWindow.present(row));
     return row;
 }
-//#endregion

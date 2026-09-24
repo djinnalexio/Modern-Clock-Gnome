@@ -9,25 +9,27 @@ import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
+
+import { anuratiCanRenderWeekdays } from './lib/utils.js';
 
 //#region Constants
 // ── Base dimensions for 1080p ────────────────────────────────────────────────
 const BASE_HEIGHT = 1080;
-const BASE_WEEKDAY_SIZE = 88;
-const BASE_WEEKDAY_LS = 20;
-const BASE_SUB_SIZE = 24;
-const BASE_SUB_LS = 4;
-const BASE_DATE_TOP_PAD = 8;
-const BASE_TIME_TOP_PAD = 4;
-const USER_SCALE_MIN = 0.5;
-const USER_SCALE_NEUTRAL = 1.0;
-const USER_SCALE_MAX = 2.0;
+const BASE_SIZE = 48;
+const BASE_LS = 16;
+const BASE_PADDING_TOP_WEEKDAY = 0;
+const BASE_PADDING_TOP_DATE = 2;
+const BASE_PADDING_TOP_TIME = 1;
+// SCALE_MIN * SCALE_MAX = 1 so that slider=0.5 can give scale=1.0
+const SCALE_MIN = 0.25;
+const SCALE_MAX = 4;
 // ── English ──────────────────────────────────────────────────────────────────
-const ANURATI_GLYPHS = /^[A-Z ]+$/;
 const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const WEEKDAYS_SHORT = WEEKDAYS.map(m => m.slice(0, 3));
 const MONTHS = [
     'JANUARY',
     'FEBRUARY',
@@ -62,26 +64,38 @@ export default class ModernClockExtension extends Extension {
         // Setting migration from boolean 'use-24h' to enum 'time-format'
         const legacy24h = this._settings.get_user_value('use-24h');
         if (legacy24h !== null) {
-            this._settings.set_string('time-format', legacy24h.get_boolean() ? '24h' : 'ampm');
+            this._settings.set_string('time-format', legacy24h.get_boolean() ? '24h' : '12h');
             this._settings.reset('use-24h');
         }
 
-        this._settingsChangedId = this._settings.connect('changed', (s, key) => {
+        this._settingsChangedId = this._settings.connect('changed', (/*s, key*/) => {
             this._clockWidgets.forEach(clockWidget => {
-                this._updateClockDisplay(clockWidget);
-                if (key === 'scale') this._scaleClock(clockWidget);
-                this._queuePositionClock(clockWidget);
+                this._updateClockText(clockWidget);
+                this._updateClockStyle(clockWidget);
+                this._queuePositionUpdate(clockWidget);
             });
         });
 
         // ── Install fonts ────────────────────────────────────────────────────
+        this._fontNotification = {
+            source: null,
+            notification: null,
+            activatedId: null,
+        };
+        this._anuratiCanRenderWeekdays = anuratiCanRenderWeekdays();
         this._installFonts();
 
-        // ── Check if Anurati can render the weekdays (only ships A–Z) ────────
-        const weekdays = [1, 2, 3, 4, 5, 6, 7]
-            .map(d => GLib.DateTime.new_local(2024, 1, d, 0, 0, 0).format('%A').toUpperCase())
-            .join('');
-        this._anuratiCoversLocale = ANURATI_GLYPHS.test(weekdays);
+        // ── Connect to theme ─────────────────────────────────────────────────
+        this._themeContext = St.ThemeContext.get_for_stage(global.stage);
+        this._themeColor = this._getThemeColor();
+        this._themeContext.connectObject(
+            'changed',
+            () => {
+                this._themeColor = this._getThemeColor();
+                this._clockWidgets.forEach(clockWidget => this._updateClockStyle(clockWidget));
+            },
+            this
+        );
 
         // ── Build clocks when the layout is ready ────────────────────────────
         this._clockWidgets = [];
@@ -107,7 +121,7 @@ export default class ModernClockExtension extends Extension {
 
         // ── Connect to work areas changes ────────────────────────────────────
         this._workareasChangedId = global.display.connect('workareas-changed', () =>
-            this._clockWidgets.forEach(clockWidget => this._queuePositionClock(clockWidget))
+            this._clockWidgets.forEach(clockWidget => this._queuePositionUpdate(clockWidget))
         );
 
         // ── Connect to GNOME Clock ───────────────────────────────────────────
@@ -120,8 +134,8 @@ export default class ModernClockExtension extends Extension {
 
             this._lastMinute = minute;
             this._clockWidgets.forEach(clockWidget => {
-                this._updateClockDisplay(clockWidget);
-                this._queuePositionClock(clockWidget);
+                this._updateClockText(clockWidget);
+                this._queuePositionUpdate(clockWidget);
             });
         });
     }
@@ -145,6 +159,18 @@ export default class ModernClockExtension extends Extension {
         if (this._startupCompleteId) {
             Main.layoutManager.disconnect(this._startupCompleteId);
             this._startupCompleteId = null;
+        }
+        if (this._themeContext) {
+            this._themeContext.disconnectObject(this);
+            this._themeContext = null;
+        }
+        if (this._fontNotification.activatedId) {
+            this._fontNotification.notification.disconnect(this._fontNotification.activatedId);
+            this._fontNotification.activatedId = null;
+        }
+        if (this._fontNotification.source) {
+            this._fontNotification.source.destroy();
+            this._fontNotification = null;
         }
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
@@ -195,7 +221,7 @@ export default class ModernClockExtension extends Extension {
         // Build widget
         const container = new St.BoxLayout({
             name: `ModernClockWidget-${monitor.index}`,
-            style_class: 'modernclock-container',
+            style: 'background: transparent;',
             can_focus: false,
             reactive: false,
             track_hover: false,
@@ -206,9 +232,9 @@ export default class ModernClockExtension extends Extension {
         else container.set_vertical(true);
 
         // Build labels
-        container.weekdayLabel = new St.Label({ style_class: 'modernclock-day' });
-        container.dateLabel = new St.Label({ style_class: 'modernclock-date' });
-        container.timeLabel = new St.Label({ style_class: 'modernclock-time' });
+        container.weekdayLabel = new St.Label();
+        container.dateLabel = new St.Label();
+        container.timeLabel = new St.Label();
 
         [container.weekdayLabel, container.dateLabel, container.timeLabel].forEach(label => {
             label.set_x_align(Clutter.ActorAlign.CENTER);
@@ -222,31 +248,48 @@ export default class ModernClockExtension extends Extension {
 
         // Connect to allocation signal (to cover edge cases not covered by the other signals)
         container.allocationNotifyId = container.connect('notify::allocation', () =>
-            this._queuePositionClock(container)
+            this._queuePositionUpdate(container)
         );
 
         // Setup widget
-        this._updateClockDisplay(container);
-        this._scaleClock(container);
-        this._queuePositionClock(container);
+        this._updateClockText(container);
+        this._updateClockStyle(container);
+        this._queuePositionUpdate(container);
 
         return container;
     }
     //#endregion
 
-    //#region updateClockDisplay
-    _updateClockDisplay(clockWidget) {
+    //#region snapshotMonitor
+    _snapshotMonitor() {
+        return Main.layoutManager.monitors
+            .map(m => `${m.index}:${m.x},${m.y},${m.width}x${m.height}`)
+            .join('|');
+    }
+    //#endregion
+
+    //#region updateClockText
+    _updateClockText(clockWidget) {
         const now = GLib.DateTime.new_now_local();
-        const dateDeco = this._settings.get_string('date-deco');
-        const timeDeco = this._settings.get_string('time-deco');
+        const weekdayDeco = this._settings.get_string('weekday-decoration');
+        const dateDeco = this._settings.get_string('date-decoration');
+        const timeDeco = this._settings.get_string('time-decoration');
 
         const mode = this._settings.get_string('language-mode');
-        const useEnglish = mode === 'english' || (mode === 'auto' && !this._anuratiCoversLocale);
+        const useEnglish =
+            mode === 'english' || (mode === 'auto' && !this._anuratiCanRenderWeekdays);
 
         // Weekday
-        const weekday = useEnglish
-            ? WEEKDAYS[now.get_day_of_week() - 1]
-            : now.format('%A').toUpperCase();
+        let weekday;
+        if (this._settings.get_string('weekday-format') === 'short') {
+            weekday = useEnglish
+                ? WEEKDAYS_SHORT[now.get_day_of_week() - 1]
+                : now.format('%a').toUpperCase();
+        } else {
+            weekday = useEnglish
+                ? WEEKDAYS[now.get_day_of_week() - 1]
+                : now.format('%A').toUpperCase();
+        }
         // Date
         let date;
         switch (this._settings.get_string('date-format')) {
@@ -277,14 +320,14 @@ export default class ModernClockExtension extends Extension {
             time = `${now.format(`${h12.toString().padStart(2, '0')}:%M ${ampm}`)}`;
         }
 
-        clockWidget.weekdayLabel.set_text(weekday);
+        clockWidget.weekdayLabel.set_text(`${weekdayDeco} ${weekday} ${weekdayDeco}`);
         clockWidget.dateLabel.set_text(`${dateDeco} ${date} ${dateDeco}`);
         clockWidget.timeLabel.set_text(`${timeDeco} ${time} ${timeDeco}`);
     }
     //#endregion
 
-    //#region scaleClock
-    _scaleClock(clockWidget) {
+    //#region updateClockStyle
+    _updateClockStyle(clockWidget) {
         // Update the monitor
         const monitor = Main.layoutManager.monitors[clockWidget.monitor.index];
         if (!monitor) return;
@@ -292,30 +335,113 @@ export default class ModernClockExtension extends Extension {
 
         const referenceDimension = Math.min(clockWidget.monitor.width, clockWidget.monitor.height);
         const monitorScale = referenceDimension / BASE_HEIGHT;
-        const sliderValue = this._settings.get_double('scale');
-        const UserScale =
-            sliderValue < 0.5
-                ? USER_SCALE_MIN + (USER_SCALE_NEUTRAL - USER_SCALE_MIN) * (sliderValue / 0.5)
-                : USER_SCALE_NEUTRAL +
-                (USER_SCALE_MAX - USER_SCALE_NEUTRAL) * ((sliderValue - 0.5) / 0.5);
-        const scale = monitorScale * UserScale;
-        function px(base) {
-            return Math.round(base * scale);
-        }
 
-        const style = {
-            weekday: `font-size: ${px(BASE_WEEKDAY_SIZE)}px; letter-spacing: ${px(BASE_WEEKDAY_LS)}px;`,
-            date: `font-size: ${px(BASE_SUB_SIZE)}px; letter-spacing: ${px(BASE_SUB_LS)}px; padding-top: ${px(BASE_DATE_TOP_PAD)}px;`,
-            time: `font-size: ${px(BASE_SUB_SIZE)}px; letter-spacing: ${px(BASE_SUB_LS)}px; padding-top: ${px(BASE_TIME_TOP_PAD)}px;`,
-        };
-        clockWidget.weekdayLabel.set_style(style.weekday);
-        clockWidget.dateLabel.set_style(style.date);
-        clockWidget.timeLabel.set_style(style.time);
+        clockWidget.weekdayLabel.visible = this._settings.get_boolean('weekday-enabled');
+        clockWidget.dateLabel.visible = this._settings.get_boolean('date-enabled');
+        clockWidget.timeLabel.visible = this._settings.get_boolean('time-enabled');
+
+        if (clockWidget.weekdayLabel.visible) {
+            clockWidget.weekdayLabel.set_style(
+                this._createLabelStyle(monitorScale, {
+                    fontFace: this._settings.get_string('weekday-font'),
+                    sizeScale: this._settings.get_double('weekday-size-scale'),
+                    letterSpacingScale: this._settings.get_double('weekday-tracking-scale'),
+                    basePaddingTop: BASE_PADDING_TOP_WEEKDAY,
+                    color: this._settings.get_string('weekday-color'),
+                    colorEnabled: this._settings.get_boolean('weekday-color-enabled'),
+                })
+            );
+        }
+        if (clockWidget.dateLabel.visible) {
+            clockWidget.dateLabel.set_style(
+                this._createLabelStyle(monitorScale, {
+                    fontFace: this._settings.get_string('date-font'),
+                    sizeScale: this._settings.get_double('date-size-scale'),
+                    letterSpacingScale: this._settings.get_double('date-tracking-scale'),
+                    basePaddingTop: BASE_PADDING_TOP_DATE,
+                    color: this._settings.get_string('date-color'),
+                    colorEnabled: this._settings.get_boolean('date-color-enabled'),
+                })
+            );
+        }
+        if (clockWidget.timeLabel.visible) {
+            clockWidget.timeLabel.set_style(
+                this._createLabelStyle(monitorScale, {
+                    fontFace: this._settings.get_string('time-font'),
+                    sizeScale: this._settings.get_double('time-size-scale'),
+                    letterSpacingScale: this._settings.get_double('time-tracking-scale'),
+                    basePaddingTop: BASE_PADDING_TOP_TIME,
+                    color: this._settings.get_string('time-color'),
+                    colorEnabled: this._settings.get_boolean('time-color-enabled'),
+                })
+            );
+        }
     }
     //#endregion
 
-    //#region positionClock
-    _positionClock(clockWidget) {
+    //#region createLabelStyle
+    _createLabelStyle(
+        monitorScale,
+        { fontFace, sizeScale, letterSpacingScale, basePaddingTop, color, colorEnabled }
+    ) {
+        const safeFontFace = fontFace.replace(/['"\\;{}]/g, '').trim();
+        const fontSize = this._computePx(BASE_SIZE, monitorScale, sizeScale);
+        const letterSpacing = this._computePx(BASE_LS, monitorScale, letterSpacingScale);
+        const paddingTop = this._computePx(basePaddingTop, monitorScale, sizeScale);
+        const styleColor = colorEnabled ? color : this._themeColor;
+
+        return (
+            `font-family: ${safeFontFace}, Cantarell, sans-serif;` +
+            `font-size: ${fontSize}px;` +
+            `letter-spacing: ${letterSpacing}px;` +
+            `padding-top: ${paddingTop}px;` +
+            `color: ${styleColor};`
+        );
+    }
+    //#endregion
+
+    //#region computePx
+    _computePx(base, monitorScale, sliderValue) {
+        const userScale = SCALE_MIN * Math.pow(SCALE_MAX / SCALE_MIN, sliderValue);
+        const scale = monitorScale * userScale;
+        return Math.round(base * scale);
+    }
+    //#endregion
+
+    //#region getThemeColor
+    _getThemeColor() {
+        const candidates = ['calendar-today', 'button default', 'osd-monitor-label'];
+        // Items that commonly get an accent color from custom themes
+        // - 'calendar-today': highlight for the current day in the GNOME calendar
+        // - 'button default': default action button
+        // - 'osd-monitor-label': number overlaid on each display when rearranging them in Settings;
+        //   rarely overridden, so usually still carries '-st-accent-color' as a fallback
+
+        let color = null;
+        let found = false;
+        for (const styleClass of candidates) {
+            const dummy = new St.Widget({ style_class: styleClass });
+            global.stage.add_child(dummy);
+            color = dummy.get_theme_node().get_background_color();
+            global.stage.remove_child(dummy);
+            dummy.destroy();
+
+            if (
+                color.alpha > 0 && // Color is visible
+                !(color.red === color.green && color.green === color.blue) // Color isn't black or grey
+            ) {
+                found = true;
+                break;
+            }
+        }
+
+        if (found) return `rgb(${color.red},${color.green},${color.blue})`;
+        else return `rgb(255,255,255)`;
+    }
+    //#endregion
+
+    //#region updateClockPosition
+    _updateClockPosition(clockWidget) {
         const workArea = Main.layoutManager.getWorkAreaForMonitor(clockWidget.monitor.index);
 
         const positionX = this._settings.get_double('position-x');
@@ -330,25 +456,17 @@ export default class ModernClockExtension extends Extension {
     }
     //#endregion
 
-    //#region queuePositionClock
-    _queuePositionClock(clockWidget) {
+    //#region queuePositionUpdate
+    _queuePositionUpdate(clockWidget) {
         if (clockWidget.positionLaterId) return;
 
         clockWidget.positionLaterId = global.compositor
             .get_laters()
             .add(Meta.LaterType.BEFORE_REDRAW, () => {
                 clockWidget.positionLaterId = null;
-                this._positionClock(clockWidget);
+                this._updateClockPosition(clockWidget);
                 return GLib.SOURCE_REMOVE;
             });
-    }
-    //#endregion
-
-    //#region snapshotMonitor
-    _snapshotMonitor() {
-        return Main.layoutManager.monitors
-            .map(m => `${m.index}:${m.x},${m.y},${m.width}x${m.height}`)
-            .join('|');
     }
     //#endregion
 
@@ -360,7 +478,8 @@ export default class ModernClockExtension extends Extension {
         if (this._fontsPresent(fontsDir)) return;
 
         this._logger.log(
-            `fonts missing, installing at ${fontsDir.get_path()} (takes effect next session)`
+            `Modern Clock fonts missing, installing them at ${fontsDir.get_path()}. ` +
+                'Takes effect next session.'
         );
         try {
             const srcDir = Gio.File.new_for_path(GLib.build_filenamev([this.path, 'fonts']));
@@ -370,6 +489,7 @@ export default class ModernClockExtension extends Extension {
                 const destChild = fontsDir.get_child(fontName);
                 srcChild.copy(destChild, Gio.FileCopyFlags.OVERWRITE, null, null);
             });
+            this._notifyFontsInstalled();
         } catch (e) {
             this._logger.warn('failed to install fonts:', e);
         }
@@ -384,6 +504,28 @@ export default class ModernClockExtension extends Extension {
         } catch {
             return false;
         }
+    }
+    //#endregion
+
+    //#region notifyFontsInstalled
+    _notifyFontsInstalled() {
+        this._fontNotification.source = new MessageTray.Source({
+            title: this.metadata.name,
+            iconName: 'dialog-information', // or extension icon
+        });
+        Main.messageTray.add(this._fontNotification.source);
+
+        this._fontNotification.notification = new MessageTray.Notification({
+            source: this._fontNotification.source,
+            title: _('Modern Clock Fonts Installed'),
+            body: _('Log out and back in for the new fonts to take effect.'),
+            iconName: 'font-x-generic-symbolic',
+        });
+        this._fontNotification.activatedId = this._fontNotification.notification.connect(
+            'activated',
+            () => this.openPreferences()
+        );
+        this._fontNotification.source.addNotification(this._fontNotification.notification);
     }
     //#endregion
 

@@ -5,6 +5,5 @@
     "shell-version": ["46", "47", "48", "49", "50", "51"],
     "url": "https://github.com/Tony-Rain/Modern-Clock-Gnome",
     "settings-schema": "org.gnome.shell.extensions.modernclock",
-    "gettext-domain": "modernclock@gnome-port",
-    "version-name": "3.0.0"
+    "gettext-domain": "modernclock@gnome-port"
 }
