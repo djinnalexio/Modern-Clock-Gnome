@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-15 23:45+0100\n"
+"POT-Creation-Date: 2026-09-24 21:36+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,58 +17,184 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/prefs.js:31
-msgid "Layout"
+#: src/extension.js:520
+msgid "Modern Clock Fonts Installed"
 msgstr ""
 
-#: src/prefs.js:66
-msgid "Left"
+#: src/extension.js:521
+msgid "Log out and back in for the new fonts to take effect."
 msgstr ""
 
-#: src/prefs.js:66
-msgid "Right"
+#: src/prefs.js:36
+msgid "General"
 msgstr ""
 
-#: src/prefs.js:69
-msgid "Top"
+#: src/prefs.js:44
+msgid "Weekday"
 msgstr ""
 
-#: src/prefs.js:69
-msgid "Bottom"
-msgstr ""
-
-#: src/prefs.js:72
-msgid "Small"
-msgstr ""
-
-#: src/prefs.js:72
-msgid "Large"
-msgstr ""
-
-#: src/prefs.js:76
+#: src/prefs.js:50
 msgid "Date"
 msgstr ""
 
-#: src/prefs.js:90
-msgid "English Date"
-msgstr ""
-
-#: src/prefs.js:109 src/prefs.js:139 src/prefs.js:153
-msgid "Format"
-msgstr ""
-
-#: src/prefs.js:121 src/prefs.js:164
-msgid "Decoration"
-msgstr ""
-
-#: src/prefs.js:133
+#: src/prefs.js:55
 msgid "Time"
 msgstr ""
 
-#: src/prefs.js:144 src/prefs.js:154
+#: src/prefs.js:69 src/prefs.js:86 src/prefs.js:110 src/prefs.js:155
+#: src/prefs.js:170
+msgid "Format"
+msgstr ""
+
+#: src/prefs.js:75 src/prefs.js:87
+msgid "Full"
+msgstr ""
+
+#: src/prefs.js:77 src/prefs.js:87
+msgid "Abbreviated"
+msgstr ""
+
+#: src/prefs.js:161 src/prefs.js:171
 msgid "24-hour"
 msgstr ""
 
-#: src/prefs.js:145 src/prefs.js:154
+#: src/prefs.js:162 src/prefs.js:171
 msgid "AM / PM"
+msgstr ""
+
+#: src/prefsModules/aboutRow.js:45
+msgid "About Modern Clock"
+msgstr ""
+
+#: src/prefsModules/aboutRow.js:69
+msgctxt "(USER)NAME EMAIL"
+msgid "translator_credits"
+msgstr ""
+
+#: src/prefsModules/aboutRow.js:73
+msgid "Extension Page"
+msgstr ""
+
+#: src/prefsModules/aboutRow.js:74
+msgid "Based on"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:44
+msgid "Appearance"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:48
+msgid "Show"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:54
+msgid "Font"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:64
+msgid "Reset to default"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:116
+msgid "Size"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:118
+msgid "Small"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:118
+msgid "Large"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:125
+msgid "Letter Spacing"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:127
+msgid "Narrow"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:127
+msgid "Wide"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:133
+msgid "Color"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:161
+msgid "Use custom color"
+msgstr ""
+
+#: src/prefsModules/labelPage.js:175
+msgid "Decoration"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:34
+msgid "Layout"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:38
+msgid "Horizontal"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:40
+msgid "Left"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:40
+msgid "Right"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:44
+msgid "Vertical"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:46
+msgid "Top"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:46
+msgid "Bottom"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:69
+msgid "Language"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:75
+msgid "System"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:77
+msgid ""
+"Use your time format language. Some characters may appear in a different "
+"font."
+msgstr ""
+
+#: src/prefsModules/mainPage.js:81
+msgid "Auto"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:83
+msgid ""
+"Use your time format language unless the default weekday font cannot display "
+"every weekday."
+msgstr ""
+
+#: src/prefsModules/mainPage.js:87
+msgid "English"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:88
+msgid "Use English."
+msgstr ""
+
+#: src/prefsModules/mainPage.js:115 src/prefsModules/mainPage.js:140
+msgid "Mode"
+msgstr ""
+
+#: src/prefsModules/mainPage.js:165
+msgid "Information"
 msgstr ""

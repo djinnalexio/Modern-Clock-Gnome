@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: modernclock@gnome-port\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-15 23:45+0100\n"
-"PO-Revision-Date: 2026-09-16 13:14+0100\n"
+"POT-Creation-Date: 2026-09-24 21:36+0100\n"
+"PO-Revision-Date: 2026-09-25 00:17+0100\n"
 "Last-Translator: Djinn Alexio <djinnalexio+gnome@proton.me>\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -18,58 +18,188 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "X-Generator: Gtranslator 50.0\n"
 
-#: src/prefs.js:31
-msgid "Layout"
-msgstr "Disposition"
+#: src/extension.js:520
+msgid "Modern Clock Fonts Installed"
+msgstr "Polices de Modern Clock installées"
 
-#: src/prefs.js:66
-msgid "Left"
-msgstr "Gauche"
+#: src/extension.js:521
+msgid "Log out and back in for the new fonts to take effect."
+msgstr "Déconnectez-vous puis reconnectez-vous pour que les nouvelles polices soient prises en compte."
 
-#: src/prefs.js:66
-msgid "Right"
-msgstr "Droite"
+#: src/prefs.js:36
+msgid "General"
+msgstr "Général"
 
-#: src/prefs.js:69
-msgid "Top"
-msgstr "Haut"
+#: src/prefs.js:44
+msgid "Weekday"
+msgstr "Jour"
 
-#: src/prefs.js:69
-msgid "Bottom"
-msgstr "Bas"
-
-#: src/prefs.js:72
-msgid "Small"
-msgstr "Petit"
-
-#: src/prefs.js:72
-msgid "Large"
-msgstr "Grand"
-
-#: src/prefs.js:76
+#: src/prefs.js:50
 msgid "Date"
 msgstr "Date"
 
-#: src/prefs.js:90
-msgid "English Date"
-msgstr "Date en anglais"
-
-#: src/prefs.js:109 src/prefs.js:139 src/prefs.js:153
-msgid "Format"
-msgstr "Format"
-
-#: src/prefs.js:121 src/prefs.js:164
-msgid "Decoration"
-msgstr "Décoration"
-
-#: src/prefs.js:133
+#: src/prefs.js:55
 msgid "Time"
 msgstr "Heure"
 
-#: src/prefs.js:144 src/prefs.js:154
+#: src/prefs.js:69 src/prefs.js:86 src/prefs.js:110 src/prefs.js:155
+#: src/prefs.js:170
+msgid "Format"
+msgstr "Format"
+
+#: src/prefs.js:75 src/prefs.js:87
+msgid "Full"
+msgstr "Complet"
+
+#: src/prefs.js:77 src/prefs.js:87
+msgid "Abbreviated"
+msgstr "Abrégé"
+
+#: src/prefs.js:161 src/prefs.js:171
 msgid "24-hour"
 msgstr "24 heures"
 
-#: src/prefs.js:145 src/prefs.js:154
+#: src/prefs.js:162 src/prefs.js:171
 msgid "AM / PM"
 msgstr "AM / PM"
+
+#: src/prefsModules/aboutRow.js:45
+msgid "About Modern Clock"
+msgstr "À propos de Modern Clock"
+
+#: src/prefsModules/aboutRow.js:69
+msgctxt "(USER)NAME EMAIL"
+msgid "translator_credits"
+msgstr "Djinn Alexio <djinnalexio+gnome@proton.me>"
+
+#: src/prefsModules/aboutRow.js:73
+msgid "Extension Page"
+msgstr "Page de l’extension"
+
+#: src/prefsModules/aboutRow.js:74
+msgid "Based on"
+msgstr "Basé sur"
+
+#: src/prefsModules/labelPage.js:44
+msgid "Appearance"
+msgstr "Apparence"
+
+#: src/prefsModules/labelPage.js:48
+msgid "Show"
+msgstr "Afficher"
+
+#: src/prefsModules/labelPage.js:54
+msgid "Font"
+msgstr "Police"
+
+#: src/prefsModules/labelPage.js:64
+msgid "Reset to default"
+msgstr "Réinitialiser"
+
+#: src/prefsModules/labelPage.js:116
+msgid "Size"
+msgstr "Taille"
+
+#: src/prefsModules/labelPage.js:118
+msgid "Small"
+msgstr "Petit"
+
+#: src/prefsModules/labelPage.js:118
+msgid "Large"
+msgstr "Grand"
+
+#: src/prefsModules/labelPage.js:125
+msgid "Letter Spacing"
+msgstr "Espacement des lettres"
+
+#: src/prefsModules/labelPage.js:127
+msgid "Narrow"
+msgstr "Étroit"
+
+#: src/prefsModules/labelPage.js:127
+msgid "Wide"
+msgstr "Large"
+
+#: src/prefsModules/labelPage.js:133
+msgid "Color"
+msgstr "Couleur"
+
+#: src/prefsModules/labelPage.js:161
+msgid "Use custom color"
+msgstr "Utiliser la couleur personnalisée"
+
+#: src/prefsModules/labelPage.js:175
+msgid "Decoration"
+msgstr "Décoration"
+
+#: src/prefsModules/mainPage.js:34
+msgid "Layout"
+msgstr "Disposition"
+
+#: src/prefsModules/mainPage.js:38
+msgid "Horizontal"
+msgstr "Horizontal"
+
+#: src/prefsModules/mainPage.js:40
+msgid "Left"
+msgstr "Gauche"
+
+#: src/prefsModules/mainPage.js:40
+msgid "Right"
+msgstr "Droite"
+
+#: src/prefsModules/mainPage.js:44
+msgid "Vertical"
+msgstr "Vertical"
+
+#: src/prefsModules/mainPage.js:46
+msgid "Top"
+msgstr "Haut"
+
+#: src/prefsModules/mainPage.js:46
+msgid "Bottom"
+msgstr "Bas"
+
+#: src/prefsModules/mainPage.js:69
+msgid "Language"
+msgstr "Langue"
+
+#: src/prefsModules/mainPage.js:75
+msgid "System"
+msgstr "Système"
+
+#: src/prefsModules/mainPage.js:77
+msgid ""
+"Use your time format language. Some characters may appear in a different "
+"font."
+msgstr ""
+"Utiliser la langue du format horaire. Certains caractères peuvent "
+"s’afficher dans une police différente."
+
+#: src/prefsModules/mainPage.js:81
+msgid "Auto"
+msgstr "Auto"
+
+#: src/prefsModules/mainPage.js:83
+msgid ""
+"Use your time format language unless the default weekday font cannot display "
+"every weekday."
+msgstr ""
+"Utiliser la langue du format horaire, sauf si la police par défaut du "
+"jour de la semaine ne peut pas afficher tous les jours."
+
+#: src/prefsModules/mainPage.js:87
+msgid "English"
+msgstr "Anglais"
+
+#: src/prefsModules/mainPage.js:88
+msgid "Use English."
+msgstr "Afficher la date en anglais."
+
+#: src/prefsModules/mainPage.js:115 src/prefsModules/mainPage.js:140
+msgid "Mode"
+msgstr "Mode"
+
+#: src/prefsModules/mainPage.js:165
+msgid "Information"
+msgstr "Informations"
