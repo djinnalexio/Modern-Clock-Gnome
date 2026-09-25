@@ -202,7 +202,7 @@ export default class ModernClockExtension extends Extension {
                 global.compositor.get_laters().remove(clockWidget.positionLaterId);
                 clockWidget.positionLaterId = null;
             }
-            clockWidget.disconnectObject(clockWidget);
+            clockWidget.disconnectObject(this);
             clockWidget.destroy();
         });
     }
