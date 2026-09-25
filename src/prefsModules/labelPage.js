@@ -56,6 +56,7 @@ export function createLabelPage(settings, { pageTitle, pageIcon, keyPrefix }) {
     const fontButton = new Gtk.FontDialogButton({
         dialog: new Gtk.FontDialog({ modal: true }),
         level: Gtk.FontLevel.FAMILY,
+        font_desc: Pango.FontDescription.from_string('Sans'), // placeholder before the bundled fonts are registered
         use_font: true,
         valign: Gtk.Align.CENTER,
     });
@@ -84,9 +85,7 @@ export function createLabelPage(settings, { pageTitle, pageIcon, keyPrefix }) {
         else if (font !== defaultFont) settings.reset(keys.font);
         // - if the font is registered : safe to display
         // - else if it is not the bundled default font: a genuinely invalid value, so reset the key
-        // - else: this is our bundled default font, but it is not in the fontmap yet (copied during
-        // first install and waiting next session). Do nothing and let the font picker show a
-        // placeholder value until the font becomes available.
+        // - else: this is the bundled default font, but not yet registered in the fontmap. Do nothing.
 
         fontResetButton.set_visible(font !== defaultFont);
         syncingFont = false;
