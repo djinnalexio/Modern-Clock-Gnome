@@ -14,7 +14,7 @@ import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
-import { anuratiCanRenderWeekdays } from './lib/utils.js';
+import { getAnuratiWeekdaySupport } from './lib/utils.js';
 
 //#region Constants
 // ── Base dimensions for 1080p ────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export default class ModernClockExtension extends Extension {
 
         // ── Install fonts ────────────────────────────────────────────────────
         this._fontNotification = { source: null, notification: null };
-        this._anuratiCanRenderWeekdays = anuratiCanRenderWeekdays();
+        this._anuratiWeekdaySupport = getAnuratiWeekdaySupport();
         this._installFonts();
 
         // ── Connect to theme ─────────────────────────────────────────────────
@@ -265,17 +265,22 @@ export default class ModernClockExtension extends Extension {
     //#region updateClockText
     _updateClockText(clockWidget) {
         const now = GLib.DateTime.new_now_local();
+        const weekdayFormat = this._settings.get_string('weekday-format');
         const weekdayDeco = this._settings.get_string('weekday-decoration');
         const dateDeco = this._settings.get_string('date-decoration');
         const timeDeco = this._settings.get_string('time-decoration');
 
         const mode = this._settings.get_string('language-mode');
         const useEnglish =
-            mode === 'english' || (mode === 'auto' && !this._anuratiCanRenderWeekdays);
+            mode === 'english' ||
+            (mode === 'auto' &&
+                !(weekdayFormat === 'long'
+                    ? this._anuratiWeekdaySupport.long
+                    : this._anuratiWeekdaySupport.short));
 
         // Weekday
         let weekday;
-        if (this._settings.get_string('weekday-format') === 'short') {
+        if (weekdayFormat === 'short') {
             weekday = useEnglish
                 ? WEEKDAYS_SHORT[now.get_day_of_week() - 1]
                 : now.format('%a').toUpperCase();

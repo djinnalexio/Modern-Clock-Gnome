@@ -12,9 +12,9 @@ import {
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import * as Config from 'resource:///org/gnome/Shell/Extensions/js/misc/config.js';
 
-import { anuratiCanRenderWeekdays } from './lib/utils.js';
 import { createLabelPage } from './prefsModules/labelPage.js';
 import { createMainPage } from './prefsModules/mainPage.js';
+import { getAnuratiWeekdaySupport } from './lib/utils.js';
 
 export default class ModernClockPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -64,22 +64,22 @@ export default class ModernClockPreferences extends ExtensionPreferences {
         weekdayPage.add(weekdayFormatGroup);
 
         let weekdayFormatRow;
-        let weekdayformatToggleGroup;
+        let weekdayFormatToggleGroup;
         if (shellVersion >= 48) {
             weekdayFormatRow = new Adw.ActionRow({ title: _('Format') });
-            weekdayformatToggleGroup = new Adw.ToggleGroup({
+            weekdayFormatToggleGroup = new Adw.ToggleGroup({
                 valign: Gtk.Align.CENTER,
                 homogeneous: true,
             });
             // weekday-format: 0 = 'long', 1 = 'short'
-            weekdayformatToggleGroup.add(new Adw.Toggle({ label: _('Full'), name: 'long' }));
-            weekdayformatToggleGroup.add(
+            weekdayFormatToggleGroup.add(new Adw.Toggle({ label: _('Full'), name: 'long' }));
+            weekdayFormatToggleGroup.add(
                 new Adw.Toggle({ label: _('Abbreviated'), name: 'short' })
             );
-            weekdayformatToggleGroup.set_active(settings.get_enum('weekday-format'));
-            weekdayFormatRow.add_suffix(weekdayformatToggleGroup);
-            weekdayformatToggleGroup.connect('notify::active', () =>
-                settings.set_enum('weekday-format', weekdayformatToggleGroup.get_active())
+            weekdayFormatToggleGroup.set_active(settings.get_enum('weekday-format'));
+            weekdayFormatRow.add_suffix(weekdayFormatToggleGroup);
+            weekdayFormatToggleGroup.connect('notify::active', () =>
+                settings.set_enum('weekday-format', weekdayFormatToggleGroup.get_active())
             );
         } else {
             weekdayFormatRow = new Adw.ComboRow({
@@ -94,7 +94,7 @@ export default class ModernClockPreferences extends ExtensionPreferences {
 
         function syncWeekdayFormatFromSettings() {
             const mode = settings.get_enum('weekday-format');
-            if (shellVersion >= 48) weekdayformatToggleGroup.set_active(mode);
+            if (shellVersion >= 48) weekdayFormatToggleGroup.set_active(mode);
             else weekdayFormatRow.set_selected(mode);
         }
         settings.connect('changed::weekday-format', syncWeekdayFormatFromSettings);
@@ -111,11 +111,15 @@ export default class ModernClockPreferences extends ExtensionPreferences {
             model: Gtk.StringList.new([]),
         });
 
-        const defaultFontSupportsWeekdays = anuratiCanRenderWeekdays();
+        const anuratiWeekdaySupport = getAnuratiWeekdaySupport();
         function updateFormatExampleList(comboRow) {
             const mode = settings.get_string('language-mode');
             const useEnglish =
-                mode === 'english' || (mode === 'auto' && !defaultFontSupportsWeekdays);
+                mode === 'english' ||
+                (mode === 'auto' &&
+                    !(settings.get_string('weekday-format') === 'long'
+                        ? anuratiWeekdaySupport.long
+                        : anuratiWeekdaySupport.short));
 
             const exampleDate = GLib.DateTime.new_local(2026, 9, 1, 0, 0, 0);
             // prettier-ignore
