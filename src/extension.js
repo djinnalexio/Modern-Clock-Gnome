@@ -68,20 +68,20 @@ export default class ModernClockExtension extends Extension {
             this._settings.reset('use-24h');
         }
 
-        this._settingsChangedId = this._settings.connect('changed', (/*s, key*/) => {
-            this._clockWidgets.forEach(clockWidget => {
-                this._updateClockText(clockWidget);
-                this._updateClockStyle(clockWidget);
-                this._queuePositionUpdate(clockWidget);
-            });
-        });
+        this._settings.connectObject(
+            'changed',
+            () => {
+                this._clockWidgets.forEach(clockWidget => {
+                    this._updateClockText(clockWidget);
+                    this._updateClockStyle(clockWidget);
+                    this._queuePositionUpdate(clockWidget);
+                });
+            },
+            this
+        );
 
         // ── Install fonts ────────────────────────────────────────────────────
-        this._fontNotification = {
-            source: null,
-            notification: null,
-            activatedId: null,
-        };
+        this._fontNotification = { source: null, notification: null };
         this._anuratiCanRenderWeekdays = anuratiCanRenderWeekdays();
         this._installFonts();
 
@@ -103,83 +103,78 @@ export default class ModernClockExtension extends Extension {
         this._lastMonitorSnapshot = null;
 
         if (Main.layoutManager._startingUp) {
-            this._startupCompleteId = Main.layoutManager.connect('startup-complete', () => {
-                Main.layoutManager.disconnect(this._startupCompleteId);
-                this._startupCompleteId = null;
-                this._ready = true;
-                this._buildAllClocks();
-            });
+            Main.layoutManager.connectObject(
+                'startup-complete',
+                () => {
+                    Main.layoutManager.disconnectObject(this);
+                    this._ready = true;
+                    this._buildAllClocks();
+                },
+                this
+            );
         } else {
             this._ready = true;
             this._buildAllClocks();
         }
 
         // ── Connect to monitor changes ───────────────────────────────────────
-        this._monitorsChangedId = Main.layoutManager.connect('monitors-changed', () => {
-            if (this._lastMonitorSnapshot !== this._snapshotMonitor()) this._buildAllClocks();
-        });
+        Main.layoutManager.connectObject(
+            'monitors-changed',
+            () => {
+                if (this._lastMonitorSnapshot !== this._snapshotMonitor()) this._buildAllClocks();
+            },
+            this
+        );
 
         // ── Connect to work areas changes ────────────────────────────────────
-        this._workareasChangedId = global.display.connect('workareas-changed', () =>
-            this._clockWidgets.forEach(clockWidget => this._queuePositionUpdate(clockWidget))
+        global.display.connectObject(
+            'workareas-changed',
+            () => this._clockWidgets.forEach(clockWidget => this._queuePositionUpdate(clockWidget)),
+            this
         );
 
         // ── Connect to GNOME Clock ───────────────────────────────────────────
         this._wallClock = new GnomeDesktop.WallClock();
         this._lastMinute = null;
-        this._clockChangedId = this._wallClock.connect('notify::clock', () => {
-            const now = GLib.DateTime.new_now_local();
-            const minute = now.get_hour() * 60 + now.get_minute();
-            if (this._lastMinute === minute) return;
+        this._wallClock.connectObject(
+            'notify::clock',
+            () => {
+                const now = GLib.DateTime.new_now_local();
+                const minute = now.get_hour() * 60 + now.get_minute();
+                if (this._lastMinute === minute) return;
 
-            this._lastMinute = minute;
-            this._clockWidgets.forEach(clockWidget => {
-                this._updateClockText(clockWidget);
-                this._queuePositionUpdate(clockWidget);
-            });
-        });
+                this._lastMinute = minute;
+                this._clockWidgets.forEach(clockWidget => {
+                    this._updateClockText(clockWidget);
+                    this._queuePositionUpdate(clockWidget);
+                });
+            },
+            this
+        );
     }
     //#endregion
 
     //#region disable
     disable() {
-        // Signals
-        if (this._clockChangedId) {
-            this._wallClock.disconnect(this._clockChangedId);
-            this._clockChangedId = null;
-        }
-        if (this._workareasChangedId) {
-            global.display.disconnect(this._workareasChangedId);
-            this._workareasChangedId = null;
-        }
-        if (this._monitorsChangedId) {
-            Main.layoutManager.disconnect(this._monitorsChangedId);
-            this._monitorsChangedId = null;
-        }
-        if (this._startupCompleteId) {
-            Main.layoutManager.disconnect(this._startupCompleteId);
-            this._startupCompleteId = null;
-        }
-        if (this._themeContext) {
-            this._themeContext.disconnectObject(this);
-            this._themeContext = null;
-        }
-        if (this._fontNotification.activatedId) {
-            this._fontNotification.notification.disconnect(this._fontNotification.activatedId);
-            this._fontNotification.activatedId = null;
-        }
+        this._wallClock.disconnectObject(this);
+        this._wallClock = null;
+
+        global.display.disconnectObject(this);
+
+        Main.layoutManager.disconnectObject(this);
+
+        this._themeContext.disconnectObject(this);
+        this._themeContext = null;
+
         if (this._fontNotification.source) {
+            this._fontNotification.notification.disconnectObject(this);
             this._fontNotification.source.destroy();
             this._fontNotification = null;
         }
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
-        }
 
-        // Objects
-        this._wallClock = null;
+        this._settings.disconnectObject(this);
         this._settings = null;
+
         this._destroyAllClocks();
         this._clockWidgets = [];
         this._logger = null;
@@ -207,10 +202,7 @@ export default class ModernClockExtension extends Extension {
                 global.compositor.get_laters().remove(clockWidget.positionLaterId);
                 clockWidget.positionLaterId = null;
             }
-            if (clockWidget.allocationNotifyId) {
-                clockWidget.disconnect(clockWidget.allocationNotifyId);
-                clockWidget.allocationNotifyId = null;
-            }
+            clockWidget.disconnectObject(clockWidget);
             clockWidget.destroy();
         });
     }
@@ -226,10 +218,10 @@ export default class ModernClockExtension extends Extension {
             reactive: false,
             track_hover: false,
         });
-        container.monitor = monitor;
-        container.positionLaterId = null;
         if (this._shellVersion >= 48) container.set_orientation(Clutter.Orientation.VERTICAL);
         else container.set_vertical(true);
+        container.monitor = monitor;
+        container.positionLaterId = null;
 
         // Build labels
         container.weekdayLabel = new St.Label();
@@ -247,8 +239,10 @@ export default class ModernClockExtension extends Extension {
         Main.layoutManager._backgroundGroup.add_child(container);
 
         // Connect to allocation signal (to cover edge cases not covered by the other signals)
-        container.allocationNotifyId = container.connect('notify::allocation', () =>
-            this._queuePositionUpdate(container)
+        container.connectObject(
+            'notify::allocation',
+            () => this._queuePositionUpdate(container),
+            this
         );
 
         // Setup widget
@@ -436,7 +430,7 @@ export default class ModernClockExtension extends Extension {
         }
 
         if (found) return `rgb(${color.red},${color.green},${color.blue})`;
-        else return `rgb(255,255,255)`;
+        else return `rgba(255,255,255,1)`; // fallback to white
     }
     //#endregion
 
@@ -522,9 +516,10 @@ export default class ModernClockExtension extends Extension {
             body: _('Log out and back in for the new fonts to take effect.'),
             iconName: 'font-x-generic-symbolic',
         });
-        this._fontNotification.activatedId = this._fontNotification.notification.connect(
+        this._fontNotification.notification.connectObject(
             'activated',
-            () => this.openPreferences()
+            () => this.openPreferences(),
+            this
         );
         this._fontNotification.source.addNotification(this._fontNotification.notification);
     }
